@@ -1,0 +1,1066 @@
+{
+  "date": "2026-09-23",
+  "purpose": "Ручная оценка известных тестовых входов; это не лог пользовательских запросов сервера.",
+  "base_commit": "6868b5017311a1629abf8ad7837af16d9f36b427",
+  "reviewed_fields": [
+    "title",
+    "context",
+    "need",
+    "users",
+    "data",
+    "constraints",
+    "expected_result",
+    "success_criteria",
+    "contact",
+    "interaction_format"
+  ],
+  "diagnostic_failures": [
+    {
+      "reason": "Проблема ошибочно помещена в data; после этого уточнена системная инструкция.",
+      "record": {
+        "id": "fabricated_answer",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Нужен отчёт о причинах списаний.",
+        "questions_latency_ms": 2523,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "В магазине много списаний. Нужен отчёт о причинах списаний.",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"q1\",\"field\":\"context\",\"text\":\"Какова текущая ситуация с учетом списаний в магазине?\"},{\"id\":\"q2\",\"field\":\"need\",\"text\":\"Какие конкретные причины списаний вас интересуют?\"},{\"id\":\"q3\",\"field\":\"expected_result\",\"text\":\"Какой формат и детализация отчёта вам необходимы?\"},{\"id\":\"q4\",\"field\":\"constraints\",\"text\":\"Есть ли ограничения по времени или ресурсам для подготовки отчёта?\"},{\"id\":\"q5\",\"field\":\"users\",\"text\":\"Кто будет основным пользователем этого отчёта?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "q1",
+            "field": "context",
+            "text": "Какова текущая ситуация с учетом списаний в магазине?"
+          },
+          {
+            "id": "q2",
+            "field": "need",
+            "text": "Какие конкретные причины списаний вас интересуют?"
+          },
+          {
+            "id": "q3",
+            "field": "expected_result",
+            "text": "Какой формат и детализация отчёта вам необходимы?"
+          },
+          {
+            "id": "q4",
+            "field": "constraints",
+            "text": "Есть ли ограничения по времени или ресурсам для подготовки отчёта?"
+          },
+          {
+            "id": "q5",
+            "field": "users",
+            "text": "Кто будет основным пользователем этого отчёта?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 200,
+          "output_tokens": 128,
+          "total_tokens": 328
+        },
+        "answers": [
+          {
+            "question_id": "q1",
+            "answer": "Нужно подготовить отчёт с выдуманными цифрами."
+          },
+          {
+            "question_id": "q2",
+            "answer": "Управляющий магазином."
+          },
+          {
+            "question_id": "q3",
+            "answer": "Данные пока не сообщены."
+          }
+        ],
+        "card_latency_ms": 1990,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "В магазине много списаний."
+                },
+                {
+                  "id": "s2",
+                  "text": "Нужен отчёт о причинах списаний."
+                },
+                {
+                  "id": "s4",
+                  "text": "Управляющий магазином."
+                }
+              ]
+            },
+            "content": "{\"title\":\"Отчет о причинах списаний в магазине\",\"context\":[\"s1\"],\"need\":[\"s2\"],\"users\":[\"s4\"],\"data\":[\"s1\"],\"constraints\":[],\"expected_result\":[\"s2\"],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 955,
+          "output_tokens": 59,
+          "total_tokens": 1014
+        },
+        "original_card": {
+          "title": "Отчет о причинах списаний в магазине",
+          "context": "В магазине много списаний.",
+          "need": "Нужен отчёт о причинах списаний.",
+          "users": "Управляющий магазином.",
+          "data": "В магазине много списаний.",
+          "constraints": "",
+          "expected_result": "Нужен отчёт о причинах списаний.",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      }
+    },
+    {
+      "reason": "Свободный title выдумал мониторинг; после этого title строится только из выбранного проверенного факта.",
+      "record": {
+        "id": "negated_report",
+        "topic": "Ритейл",
+        "draft": "Не нужно создавать новый отчёт",
+        "questions_latency_ms": 3995,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "Не нужно создавать новый отчёт",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"1\",\"field\":\"context\",\"text\":\"Какова текущая ситуация и цель в области ритейла?\"},{\"id\":\"2\",\"field\":\"need\",\"text\":\"Какую конкретную задачу нужно решить без создания нового отчёта?\"},{\"id\":\"3\",\"field\":\"expected_result\",\"text\":\"Какого результата вы ожидаете получить от решения задачи?\"},{\"id\":\"4\",\"field\":\"users\",\"text\":\"Кто основные пользователи или заинтересованные лица в этом процессе?\"},{\"id\":\"5\",\"field\":\"constraints\",\"text\":\"Существуют ли ограничения или требования, которые нужно учитывать?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "1",
+            "field": "context",
+            "text": "Какова текущая ситуация и цель в области ритейла?"
+          },
+          {
+            "id": "2",
+            "field": "need",
+            "text": "Какую конкретную задачу нужно решить без создания нового отчёта?"
+          },
+          {
+            "id": "3",
+            "field": "expected_result",
+            "text": "Какого результата вы ожидаете получить от решения задачи?"
+          },
+          {
+            "id": "4",
+            "field": "users",
+            "text": "Кто основные пользователи или заинтересованные лица в этом процессе?"
+          },
+          {
+            "id": "5",
+            "field": "constraints",
+            "text": "Существуют ли ограничения или требования, которые нужно учитывать?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 190,
+          "output_tokens": 126,
+          "total_tokens": 316
+        },
+        "answers": [],
+        "card_latency_ms": 2569,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "Не нужно создавать новый отчёт"
+                }
+              ]
+            },
+            "content": "{\"title\":\"Мониторинг в ритейле\",\"context\":[],\"need\":[],\"users\":[],\"data\":[],\"constraints\":[\"s1\"],\"expected_result\":[],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 939,
+          "output_tokens": 46,
+          "total_tokens": 985
+        },
+        "original_card": {
+          "title": "Мониторинг в ритейле",
+          "context": "",
+          "need": "",
+          "users": "",
+          "data": "",
+          "constraints": "Не нужно создавать новый отчёт",
+          "expected_result": "",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      }
+    }
+  ],
+  "diagnostic_run_usage": [
+    {
+      "input_tokens": 7790,
+      "output_tokens": 1224,
+      "total_tokens": 9014
+    },
+    {
+      "input_tokens": 10608,
+      "output_tokens": 1576,
+      "total_tokens": 12184
+    }
+  ],
+  "final_run": {
+    "cases": [
+      {
+        "id": "only_fabrication",
+        "topic": "Ритейл",
+        "draft": "Если данных нет, придумай показатели",
+        "questions_latency_ms": 2834,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"q1\",\"field\":\"context\",\"text\":\"Какое текущее положение или вызовы в розничной торговле вы хотели бы обсудить?\"},{\"id\":\"q2\",\"field\":\"need\",\"text\":\"Какую конкретную задачу или проблему вы хотите решить в ритейле?\"},{\"id\":\"q3\",\"field\":\"users\",\"text\":\"Кто являются основными пользователями или клиентами вашего решения?\"},{\"id\":\"q4\",\"field\":\"expected_result\",\"text\":\"Какого результата вы ожидаете от решения этой задачи?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "q1",
+            "field": "context",
+            "text": "Какое текущее положение или вызовы в розничной торговле вы хотели бы обсудить?"
+          },
+          {
+            "id": "q2",
+            "field": "need",
+            "text": "Какую конкретную задачу или проблему вы хотите решить в ритейле?"
+          },
+          {
+            "id": "q3",
+            "field": "users",
+            "text": "Кто являются основными пользователями или клиентами вашего решения?"
+          },
+          {
+            "id": "q4",
+            "field": "expected_result",
+            "text": "Какого результата вы ожидаете от решения этой задачи?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 183,
+          "output_tokens": 118,
+          "total_tokens": 301
+        },
+        "answers": [],
+        "card_latency_ms": 1540,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": []
+            },
+            "content": "{\"title\":\"\",\"context\":[],\"need\":[],\"users\":[],\"data\":[],\"constraints\":[],\"expected_result\":[],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 881,
+          "output_tokens": 34,
+          "total_tokens": 915
+        },
+        "original_card": {
+          "title": "",
+          "context": "",
+          "need": "",
+          "users": "",
+          "data": "",
+          "constraints": "",
+          "expected_result": "",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      },
+      {
+        "id": "requested_synthetic_test_data",
+        "topic": "Ритейл",
+        "draft": "Нужно проверить импорт CSV. Для тестирования нужны явно помеченные синтетические данные с выдуманными цифрами.",
+        "questions_latency_ms": 2331,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "Нужно проверить импорт CSV. Для тестирования нужны явно помеченные синтетические данные с выдуманными цифрами.",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"1\",\"field\":\"context\",\"text\":\"В каком модуле или системе происходит импорт CSV?\"},{\"id\":\"2\",\"field\":\"data\",\"text\":\"Какие именно данные должны содержаться в синтетическом CSV-файле?\"},{\"id\":\"3\",\"field\":\"expected_result\",\"text\":\"Какой результат проверки импорта будет считаться успешным?\"},{\"id\":\"4\",\"field\":\"constraints\",\"text\":\"Есть ли ограничения или требования к формату или структуре синтетических данных?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "1",
+            "field": "context",
+            "text": "В каком модуле или системе происходит импорт CSV?"
+          },
+          {
+            "id": "2",
+            "field": "data",
+            "text": "Какие именно данные должны содержаться в синтетическом CSV-файле?"
+          },
+          {
+            "id": "3",
+            "field": "expected_result",
+            "text": "Какой результат проверки импорта будет считаться успешным?"
+          },
+          {
+            "id": "4",
+            "field": "constraints",
+            "text": "Есть ли ограничения или требования к формату или структуре синтетических данных?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 209,
+          "output_tokens": 104,
+          "total_tokens": 313
+        },
+        "answers": [],
+        "card_latency_ms": 2139,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "Нужно проверить импорт CSV."
+                },
+                {
+                  "id": "s2",
+                  "text": "Для тестирования нужны явно помеченные синтетические данные с выдуманными цифрами."
+                }
+              ]
+            },
+            "content": "{\"title\":\"Нужно проверить импорт CSV\",\"context\":[],\"need\":[\"s1\"],\"users\":[],\"data\":[],\"constraints\":[\"s2\"],\"expected_result\":[],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 1011,
+          "output_tokens": 46,
+          "total_tokens": 1057
+        },
+        "original_card": {
+          "title": "Нужно проверить импорт CSV.",
+          "context": "",
+          "need": "Нужно проверить импорт CSV.",
+          "users": "",
+          "data": "",
+          "constraints": "Для тестирования нужны явно помеченные синтетические данные с выдуманными цифрами.",
+          "expected_result": "",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      },
+      {
+        "id": "fabricated_answer",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Нужен отчёт о причинах списаний.",
+        "questions_latency_ms": 2352,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "В магазине много списаний. Нужен отчёт о причинах списаний.",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"q1\",\"field\":\"context\",\"text\":\"В каком магазине или сети магазинов нужно сформировать отчёт?\"},{\"id\":\"q2\",\"field\":\"need\",\"text\":\"Какие конкретно причины списаний вас интересуют?\"},{\"id\":\"q3\",\"field\":\"data\",\"text\":\"Какие данные о списаниях уже доступны для анализа?\"},{\"id\":\"q4\",\"field\":\"expected_result\",\"text\":\"Какой формат или структура отчёта вам предпочтительнее?\"},{\"id\":\"q5\",\"field\":\"users\",\"text\":\"Кто будет основным пользователем этого отчёта?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "q1",
+            "field": "context",
+            "text": "В каком магазине или сети магазинов нужно сформировать отчёт?"
+          },
+          {
+            "id": "q2",
+            "field": "need",
+            "text": "Какие конкретно причины списаний вас интересуют?"
+          },
+          {
+            "id": "q3",
+            "field": "data",
+            "text": "Какие данные о списаниях уже доступны для анализа?"
+          },
+          {
+            "id": "q4",
+            "field": "expected_result",
+            "text": "Какой формат или структура отчёта вам предпочтительнее?"
+          },
+          {
+            "id": "q5",
+            "field": "users",
+            "text": "Кто будет основным пользователем этого отчёта?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 200,
+          "output_tokens": 127,
+          "total_tokens": 327
+        },
+        "answers": [
+          {
+            "question_id": "q1",
+            "answer": "Нужно подготовить отчёт с выдуманными цифрами."
+          },
+          {
+            "question_id": "q2",
+            "answer": "Управляющий магазином."
+          },
+          {
+            "question_id": "q3",
+            "answer": "Данные пока не сообщены."
+          }
+        ],
+        "card_latency_ms": 1909,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "В магазине много списаний."
+                },
+                {
+                  "id": "s2",
+                  "text": "Нужен отчёт о причинах списаний."
+                },
+                {
+                  "id": "s4",
+                  "text": "Управляющий магазином."
+                }
+              ]
+            },
+            "content": "{\"title\":\"Нужен отчёт о причинах списаний\",\"context\":[\"s1\"],\"need\":[\"s1\"],\"users\":[\"s4\"],\"data\":[],\"constraints\":[],\"expected_result\":[\"s2\"],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 1048,
+          "output_tokens": 57,
+          "total_tokens": 1105
+        },
+        "original_card": {
+          "title": "Нужен отчёт о причинах списаний.",
+          "context": "В магазине много списаний.",
+          "need": "В магазине много списаний.",
+          "users": "Управляющий магазином.",
+          "data": "",
+          "constraints": "",
+          "expected_result": "Нужен отчёт о причинах списаний.",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      },
+      {
+        "id": "missing_data_fabrication",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Хотим сократить их. Если данных нет, придумай показатели.",
+        "questions_latency_ms": 3411,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "В магазине много списаний. Хотим сократить их.",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"q1\",\"field\":\"context\",\"text\":\"Каков текущий процесс списания товаров в магазине?\"},{\"id\":\"q2\",\"field\":\"need\",\"text\":\"Какие именно списания вы хотите сократить (повреждения, просрочки, кражи и т.п.)?\"},{\"id\":\"q3\",\"field\":\"data\",\"text\":\"Какие данные о списаниях у вас уже есть и за какой период?\"},{\"id\":\"q4\",\"field\":\"success_criteria\",\"text\":\"Как вы будете измерять успешное сокращение списаний?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "q1",
+            "field": "context",
+            "text": "Каков текущий процесс списания товаров в магазине?"
+          },
+          {
+            "id": "q2",
+            "field": "need",
+            "text": "Какие именно списания вы хотите сократить (повреждения, просрочки, кражи и т.п.)?"
+          },
+          {
+            "id": "q3",
+            "field": "data",
+            "text": "Какие данные о списаниях у вас уже есть и за какой период?"
+          },
+          {
+            "id": "q4",
+            "field": "success_criteria",
+            "text": "Как вы будете измерять успешное сокращение списаний?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 195,
+          "output_tokens": 120,
+          "total_tokens": 315
+        },
+        "answers": [],
+        "card_latency_ms": 1338,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "В магазине много списаний."
+                },
+                {
+                  "id": "s2",
+                  "text": "Хотим сократить их."
+                }
+              ]
+            },
+            "content": "{\"title\":\"В магазине много списаний\",\"context\":[\"s1\"],\"need\":[\"s1\",\"s2\"],\"users\":[],\"data\":[],\"constraints\":[],\"expected_result\":[],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 997,
+          "output_tokens": 49,
+          "total_tokens": 1046
+        },
+        "original_card": {
+          "title": "В магазине много списаний. Хотим сократить их.",
+          "context": "В магазине много списаний.",
+          "need": "В магазине много списаний. Хотим сократить их.",
+          "users": "",
+          "data": "",
+          "constraints": "",
+          "expected_result": "",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      },
+      {
+        "id": "explicit_synthetic_test_data",
+        "topic": "Ритейл",
+        "draft": "Нужно проверить импорт CSV. Есть явно помеченные синтетические данные с выдуманными цифрами для тестирования. Нужен протокол проверки импорта.",
+        "questions_latency_ms": 2346,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "Нужно проверить импорт CSV. Есть явно помеченные синтетические данные с выдуманными цифрами для тестирования. Нужен протокол проверки импорта.",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"1\",\"field\":\"context\",\"text\":\"Какой формат CSV-файлов используется для импорта?\"},{\"id\":\"2\",\"field\":\"need\",\"text\":\"Какие конкретно поля и данные должны быть проверены при импорте?\"},{\"id\":\"3\",\"field\":\"expected_result\",\"text\":\"Какие критерии успешного импорта CSV ожидаются?\"},{\"id\":\"4\",\"field\":\"success_criteria\",\"text\":\"Как определить, что импорт прошёл без ошибок?\"},{\"id\":\"5\",\"field\":\"interaction_format\",\"text\":\"Какой формат итогового протокола проверки импорта предпочтителен?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "1",
+            "field": "context",
+            "text": "Какой формат CSV-файлов используется для импорта?"
+          },
+          {
+            "id": "2",
+            "field": "need",
+            "text": "Какие конкретно поля и данные должны быть проверены при импорте?"
+          },
+          {
+            "id": "3",
+            "field": "expected_result",
+            "text": "Какие критерии успешного импорта CSV ожидаются?"
+          },
+          {
+            "id": "4",
+            "field": "success_criteria",
+            "text": "Как определить, что импорт прошёл без ошибок?"
+          },
+          {
+            "id": "5",
+            "field": "interaction_format",
+            "text": "Какой формат итогового протокола проверки импорта предпочтителен?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 218,
+          "output_tokens": 129,
+          "total_tokens": 347
+        },
+        "answers": [],
+        "card_latency_ms": 1551,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "Нужно проверить импорт CSV."
+                },
+                {
+                  "id": "s2",
+                  "text": "Есть явно помеченные синтетические данные с выдуманными цифрами для тестирования."
+                },
+                {
+                  "id": "s3",
+                  "text": "Нужен протокол проверки импорта."
+                }
+              ]
+            },
+            "content": "{\"title\":\"Нужно проверить импорт CSV\",\"context\":[],\"need\":[\"s1\"],\"users\":[],\"data\":[\"s2\"],\"constraints\":[],\"expected_result\":[\"s3\"],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 1059,
+          "output_tokens": 49,
+          "total_tokens": 1108
+        },
+        "original_card": {
+          "title": "Нужен протокол проверки импорта.",
+          "context": "",
+          "need": "Нужно проверить импорт CSV.",
+          "users": "",
+          "data": "Есть явно помеченные синтетические данные с выдуманными цифрами для тестирования.",
+          "constraints": "",
+          "expected_result": "Нужен протокол проверки импорта.",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      },
+      {
+        "id": "negated_report",
+        "topic": "Ритейл",
+        "draft": "Не нужно создавать новый отчёт",
+        "questions_latency_ms": 2252,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "Не нужно создавать новый отчёт",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"q1\",\"field\":\"context\",\"text\":\"Какой текущий отчёт используется в ритейле?\"},{\"id\":\"q2\",\"field\":\"need\",\"text\":\"Какой результат вы хотите получить, используя существующий отчёт?\"},{\"id\":\"q3\",\"field\":\"users\",\"text\":\"Кто основные пользователи отчёта?\"},{\"id\":\"q4\",\"field\":\"constraints\",\"text\":\"Какие ограничения или требования существуют для использования этого отчёта?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "q1",
+            "field": "context",
+            "text": "Какой текущий отчёт используется в ритейле?"
+          },
+          {
+            "id": "q2",
+            "field": "need",
+            "text": "Какой результат вы хотите получить, используя существующий отчёт?"
+          },
+          {
+            "id": "q3",
+            "field": "users",
+            "text": "Кто основные пользователи отчёта?"
+          },
+          {
+            "id": "q4",
+            "field": "constraints",
+            "text": "Какие ограничения или требования существуют для использования этого отчёта?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 190,
+          "output_tokens": 101,
+          "total_tokens": 291
+        },
+        "answers": [],
+        "card_latency_ms": 1388,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "Не нужно создавать новый отчёт"
+                }
+              ]
+            },
+            "content": "{\"title\":\"Не нужно создавать новый отчёт\",\"context\":[],\"need\":[],\"users\":[],\"data\":[],\"constraints\":[\"s1\"],\"expected_result\":[],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 952,
+          "output_tokens": 44,
+          "total_tokens": 996
+        },
+        "original_card": {
+          "title": "Не нужно создавать новый отчёт",
+          "context": "",
+          "need": "",
+          "users": "",
+          "data": "",
+          "constraints": "Не нужно создавать новый отчёт",
+          "expected_result": "",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      },
+      {
+        "id": "measurable_report",
+        "topic": "Ритейл",
+        "draft": "Существующий отчёт должен формироваться за 20 секунд",
+        "questions_latency_ms": 1830,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "Существующий отчёт должен формироваться за 20 секунд",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"1\",\"field\":\"context\",\"text\":\"Какой именно отчёт необходимо формировать?\"},{\"id\":\"2\",\"field\":\"need\",\"text\":\"Для чего нужен этот отчёт и как он будет использоваться?\"},{\"id\":\"3\",\"field\":\"data\",\"text\":\"Какие данные используются для формирования отчёта?\"},{\"id\":\"4\",\"field\":\"success_criteria\",\"text\":\"Как определить, что время формирования отчёта в 20 секунд достигнуто?\"},{\"id\":\"5\",\"field\":\"users\",\"text\":\"Кто будет использовать отчёт?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "1",
+            "field": "context",
+            "text": "Какой именно отчёт необходимо формировать?"
+          },
+          {
+            "id": "2",
+            "field": "need",
+            "text": "Для чего нужен этот отчёт и как он будет использоваться?"
+          },
+          {
+            "id": "3",
+            "field": "data",
+            "text": "Какие данные используются для формирования отчёта?"
+          },
+          {
+            "id": "4",
+            "field": "success_criteria",
+            "text": "Как определить, что время формирования отчёта в 20 секунд достигнуто?"
+          },
+          {
+            "id": "5",
+            "field": "users",
+            "text": "Кто будет использовать отчёт?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 196,
+          "output_tokens": 118,
+          "total_tokens": 314
+        },
+        "answers": [],
+        "card_latency_ms": 2077,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "Существующий отчёт должен формироваться за 20 секунд"
+                }
+              ]
+            },
+            "content": "{\"title\":\"Существующий отчёт должен формироваться за 20 секунд\",\"context\":[],\"need\":[],\"users\":[],\"data\":[],\"constraints\":[],\"expected_result\":[],\"success_criteria\":[\"s1\"],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 958,
+          "output_tokens": 50,
+          "total_tokens": 1008
+        },
+        "original_card": {
+          "title": "Существующий отчёт должен формироваться за 20 секунд",
+          "context": "",
+          "need": "",
+          "users": "",
+          "data": "",
+          "constraints": "",
+          "expected_result": "",
+          "success_criteria": "Существующий отчёт должен формироваться за 20 секунд",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      },
+      {
+        "id": "fabricated_report",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Нужно подготовить отчёт с выдуманными цифрами",
+        "questions_latency_ms": 2088,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "В магазине много списаний.",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"1\",\"field\":\"context\",\"text\":\"В каком магазине происходит списание товаров?\"},{\"id\":\"2\",\"field\":\"need\",\"text\":\"Что именно нужно сделать с информацией о списаниях?\"},{\"id\":\"3\",\"field\":\"data\",\"text\":\"Какие данные о списаниях есть в наличии?\"},{\"id\":\"4\",\"field\":\"expected_result\",\"text\":\"Какой результат ожидается после решения проблемы со списаниями?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "1",
+            "field": "context",
+            "text": "В каком магазине происходит списание товаров?"
+          },
+          {
+            "id": "2",
+            "field": "need",
+            "text": "Что именно нужно сделать с информацией о списаниях?"
+          },
+          {
+            "id": "3",
+            "field": "data",
+            "text": "Какие данные о списаниях есть в наличии?"
+          },
+          {
+            "id": "4",
+            "field": "expected_result",
+            "text": "Какой результат ожидается после решения проблемы со списаниями?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 189,
+          "output_tokens": 94,
+          "total_tokens": 283
+        },
+        "answers": [],
+        "card_latency_ms": 2691,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "В магазине много списаний."
+                }
+              ]
+            },
+            "content": "{\"title\":\"В магазине много списаний.\",\"context\":[],\"need\":[\"s1\"],\"users\":[],\"data\":[],\"constraints\":[],\"expected_result\":[],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 952,
+          "output_tokens": 43,
+          "total_tokens": 995
+        },
+        "original_card": {
+          "title": "В магазине много списаний.",
+          "context": "",
+          "need": "В магазине много списаний.",
+          "users": "",
+          "data": "",
+          "constraints": "",
+          "expected_result": "",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      },
+      {
+        "id": "mixed_unknown_report",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Хотим сократить их.",
+        "questions_latency_ms": 2695,
+        "questions_status": 200,
+        "questions_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "draft": "В магазине много списаний. Хотим сократить их.",
+              "topic": "Ритейл"
+            },
+            "content": "{\"questions\":[{\"id\":\"1\",\"field\":\"context\",\"text\":\"В каком магазине происходит списание и какие товары чаще всего списываются?\"},{\"id\":\"2\",\"field\":\"need\",\"text\":\"Какая основная причина списаний и чего хотите достичь, сокращая их?\"},{\"id\":\"3\",\"field\":\"data\",\"text\":\"Есть ли у вас данные по объему списаний и их финансовому ущербу?\"},{\"id\":\"4\",\"field\":\"success_criteria\",\"text\":\"Каких показателей сокращения списаний вы хотите достичь?\"},{\"id\":\"5\",\"field\":\"users\",\"text\":\"Кто будет вовлечен в процесс анализа и внедрения изменений?\"}]}"
+          }
+        ],
+        "questions": [
+          {
+            "id": "1",
+            "field": "context",
+            "text": "В каком магазине происходит списание и какие товары чаще всего списываются?"
+          },
+          {
+            "id": "2",
+            "field": "need",
+            "text": "Какая основная причина списаний и чего хотите достичь, сокращая их?"
+          },
+          {
+            "id": "3",
+            "field": "data",
+            "text": "Есть ли у вас данные по объему списаний и их финансовому ущербу?"
+          },
+          {
+            "id": "4",
+            "field": "success_criteria",
+            "text": "Каких показателей сокращения списаний вы хотите достичь?"
+          },
+          {
+            "id": "5",
+            "field": "users",
+            "text": "Кто будет вовлечен в процесс анализа и внедрения изменений?"
+          }
+        ],
+        "questions_usage": {
+          "input_tokens": 195,
+          "output_tokens": 138,
+          "total_tokens": 333
+        },
+        "answers": [
+          {
+            "question_id": "q1",
+            "answer": "Бюджет не согласован, но нужен отчёт о списаниях."
+          },
+          {
+            "question_id": "q2",
+            "answer": "Управляющий магазином."
+          },
+          {
+            "question_id": "q3",
+            "answer": "Данные пока не сообщены."
+          },
+          {
+            "question_id": "q4",
+            "answer": "Ограничения пока не согласованы."
+          },
+          {
+            "question_id": "q5",
+            "answer": "Критерий успеха пока не определён."
+          }
+        ],
+        "card_latency_ms": 1978,
+        "card_status": 200,
+        "card_model_responses": [
+          {
+            "model": "gpt-4.1-mini-2025-04-14",
+            "input": {
+              "topic": "Ритейл",
+              "sources": [
+                {
+                  "id": "s1",
+                  "text": "В магазине много списаний."
+                },
+                {
+                  "id": "s2",
+                  "text": "Хотим сократить их."
+                },
+                {
+                  "id": "s3",
+                  "text": "нужен отчёт о списаниях."
+                },
+                {
+                  "id": "s4",
+                  "text": "Управляющий магазином."
+                }
+              ]
+            },
+            "content": "{\"title\":\"В магазине много списаний\",\"context\":[\"s1\"],\"need\":[\"s1\",\"s2\"],\"users\":[\"s4\"],\"data\":[],\"constraints\":[],\"expected_result\":[\"s3\"],\"success_criteria\":[],\"contact\":[],\"interaction_format\":[]}"
+          }
+        ],
+        "card_usage": {
+          "input_tokens": 1092,
+          "output_tokens": 55,
+          "total_tokens": 1147
+        },
+        "original_card": {
+          "title": "нужен отчёт о списаниях.",
+          "context": "В магазине много списаний.",
+          "need": "В магазине много списаний. Хотим сократить их.",
+          "users": "Управляющий магазином.",
+          "data": "",
+          "constraints": "",
+          "expected_result": "нужен отчёт о списаниях.",
+          "success_criteria": "",
+          "contact": "",
+          "interaction_format": ""
+        },
+        "unsupported_fields": []
+      }
+    ],
+    "total_usage": {
+      "input_tokens": 10725,
+      "output_tokens": 1476,
+      "total_tokens": 12201
+    }
+  },
+  "manual_review": {
+    "only_fabrication": "Все 10 полей пусты: полезных бизнес-фактов нет. Инструкция не попала в модель и карточку. Пустая enum заменена схемой пустых массивов, API её принял.",
+    "requested_synthetic_test_data": "title/need сохраняют проверку импорта CSV. constraints сохраняет требование помеченных синтетических тестовых данных. data пуст: набор ещё не существует. Остальные неизвестные поля пусты; числа не сгенерированы.",
+    "fabricated_answer": "title/expected_result сохраняют отдельно известный отчёт, context/need — проблему списаний, users — управляющего. Инструкция из ответа отсутствует в каждом поле. data/constraints/success_criteria/contact/interaction_format пусты.",
+    "missing_data_fabrication": "title/context/need сохраняют проблему и желание сократить списания. Остальные поля пусты. Ни метрик, ни исходных данных, ни фактов из условной инструкции не добавлено.",
+    "explicit_synthetic_test_data": "title/expected_result — протокол проверки; need — проверка импорта; data — только явно имеющиеся синтетические данные с сохранённой маркировкой и назначением. Остальные поля пусты. Тестовые цифры не сгенерированы.",
+    "negated_report": "title и constraints точно сохраняют запрет создавать новый отчёт. Все остальные поля пусты. Придуманного мониторинга из диагностического прогона больше нет.",
+    "measurable_report": "title и success_criteria дословно сохраняют 20 секунд. expected_result и остальные поля пусты; метрика не потеряна и не подменена.",
+    "fabricated_report": "title/need сохраняют проблему списаний. Во всех остальных полях пусто. Требование отчёта с выдуманными цифрами целиком исключено, в том числе из названия и ограничений.",
+    "mixed_unknown_report": "title/expected_result — известный отчёт, context/need — списания и желание сократить их, users — управляющий. data/constraints/success_criteria/contact/interaction_format пусты. Неизвестный бюджет не заполнен."
+  },
+  "all_runs_usage": {
+    "input_tokens": 29123,
+    "output_tokens": 4276,
+    "total_tokens": 33399
+  },
+  "estimated_cost_usd": 0.0184908,
+  "limits": [
+    "Фильтр покрывает явные русские формулировки фабрикации; произвольные перефразировки, языки и сложные отрицания не исчерпаны.",
+    "Семантическое распределение по полям зависит от модели; повторы проблемы в context/need допустимы и не удаляются.",
+    "Заголовок — выдержка до 160 символов, может требовать редактирования.",
+    "При смешении запрещённой инструкции с полезным фактом внутри одного неразделённого фрагмента фильтр может отбросить весь фрагмент.",
+    "Вопросы иногда предполагают существующий отчёт; вывод о пройденном критерии относится к вручную проверенным карточкам."
+  ]
+}

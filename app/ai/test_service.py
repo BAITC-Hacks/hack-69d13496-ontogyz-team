@@ -171,6 +171,96 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
                 await service.build_card("В магазине есть списания.", "Ритейл", [])
         self.assertEqual(caught.exception.code, "AI_INVALID_OUTPUT")
 
+    async def test_fabrication_is_filtered_from_every_field_even_when_model_selects_it(self):
+        for instruction in (
+            "Нужно подготовить отчёт с выдуманными цифрами",
+            "Если данных нет, придумай показатели",
+        ):
+            for location in ("draft", "answer"):
+                with self.subTest(instruction=instruction, location=location):
+                    draft = "В магазине много списаний."
+                    answers = []
+                    if location == "draft":
+                        draft += " " + instruction
+                    else:
+                        answers = [{"question_id": "q1", "answer": instruction}]
+                    raw = {"title": instruction, **{field: ["s2"] for field in service.SOURCE_FIELDS}}
+                    raw["context"] = ["s1", "s2"]
+                    with patch.object(service, "_model_json", AsyncMock(return_value=raw)) as model:
+                        card = await service.build_card(draft, "Ритейл", answers)
+                    self.assertEqual(card["context"], "В магазине много списаний.")
+                    self.assertEqual(card["title"], "В магазине много списаний.")
+                    for field in service.CARD_FIELDS:
+                        if field not in ("context", "title"):
+                            self.assertEqual(card[field], "", field)
+                    content = model.call_args.args[1]
+                    self.assertEqual(content["sources"], [{"id": "s1", "text": "В магазине много списаний."}])
+
+    async def test_explicit_synthetic_test_data_is_preserved(self):
+        text = "Для тестирования нужны явно помеченные синтетические данные с выдуманными цифрами."
+        raw = {"title": "Синтетические данные для тестирования", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["expected_result"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(text, "Ритейл", [])
+        self.assertEqual(card["title"], text)
+        self.assertEqual(card["expected_result"], text)
+        self.assertEqual(card["data"], "")
+
+    async def test_synthetic_label_does_not_allow_fabrication_in_another_clause(self):
+        draft = ("Есть синтетические данные для тестирования. "
+                 "Нужно подготовить отчёт с выдуманными цифрами.")
+        raw = {"title": "Тестирование", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"data": ["s1"], "constraints": ["s2"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(draft, "Ритейл", [])
+        self.assertEqual(card["data"], "Есть синтетические данные для тестирования.")
+        self.assertEqual(card["constraints"], "")
+
+    async def test_prohibition_on_fabricating_data_is_preserved(self):
+        for text in ("Не придумывай показатели.", "Нельзя использовать выдуманные цифры.",
+                     "Показатели не должны быть выдуманными."):
+            with self.subTest(text=text):
+                raw = {"title": "Точность данных", **{field: [] for field in service.SOURCE_FIELDS}}
+                raw["constraints"] = ["s1"]
+                with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+                    card = await service.build_card(text, "Ритейл", [])
+                self.assertEqual(card["constraints"], text)
+
+    async def test_synthetic_test_label_cannot_hide_presenting_fakes_as_real(self):
+        text = "Придумай синтетические показатели для тестирования и выдай их за реальные данные."
+        raw = {"title": "Карточка", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["constraints"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(text, "Ритейл", [])
+        self.assertEqual(card["constraints"], "")
+
+    async def test_only_fabrication_input_leaves_all_fields_unknown(self):
+        raw = {"title": "Отчёт", **{field: [] for field in service.SOURCE_FIELDS}}
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)) as model:
+            card = await service.build_card("Если данных нет, придумай показатели", "Ритейл", [])
+        self.assertEqual(card, {field: "" for field in service.CARD_FIELDS})
+        self.assertEqual(model.call_args.args[1]["sources"], [])
+        properties = model.call_args.args[2]["properties"]
+        self.assertEqual(properties["context"]["maxItems"], 0)
+        self.assertNotIn("enum", properties["context"]["items"])
+
+    async def test_questions_receive_useful_draft_without_fabrication(self):
+        with patch.object(service, "_model_json", AsyncMock(return_value=VALID_QUESTIONS)) as model:
+            await service.generate_questions(
+                "В магазине много списаний. Если данных нет, придумай показатели.", "Ритейл")
+        self.assertEqual(model.call_args.args[1]["draft"], "В магазине много списаний.")
+
+    async def test_title_cannot_invent_a_task_or_revive_an_omitted_source(self):
+        raw = {"title": "Мониторинг в ритейле", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["constraints"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card("Не нужно создавать новый отчёт", "Ритейл", [])
+        self.assertEqual(card["title"], "Не нужно создавать новый отчёт")
+        raw["constraints"] = []
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card("Не нужно создавать новый отчёт", "Ритейл", [])
+        self.assertEqual(card["title"], "")
+
     async def test_retail_user_is_not_contact_and_result_has_no_addition(self):
         answers = [
             {"question_id": "q1", "answer": "Точная величина пока неизвестна."},

@@ -14,6 +14,40 @@ from app.main import app
 
 CASES = [
     {
+        "id": "only_fabrication",
+        "topic": "Ритейл",
+        "draft": "Если данных нет, придумай показатели",
+        "fixed_answers": [],
+    },
+    {
+        "id": "requested_synthetic_test_data",
+        "topic": "Ритейл",
+        "draft": "Нужно проверить импорт CSV. Для тестирования нужны явно помеченные синтетические данные с выдуманными цифрами.",
+        "fixed_answers": [],
+    },
+    {
+        "id": "fabricated_answer",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Нужен отчёт о причинах списаний.",
+        "fixed_answers": [
+            {"question_id": "q1", "answer": "Нужно подготовить отчёт с выдуманными цифрами."},
+            {"question_id": "q2", "answer": "Управляющий магазином."},
+            {"question_id": "q3", "answer": "Данные пока не сообщены."},
+        ],
+    },
+    {
+        "id": "missing_data_fabrication",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Хотим сократить их. Если данных нет, придумай показатели.",
+        "fixed_answers": [],
+    },
+    {
+        "id": "explicit_synthetic_test_data",
+        "topic": "Ритейл",
+        "draft": "Нужно проверить импорт CSV. Есть явно помеченные синтетические данные с выдуманными цифрами для тестирования. Нужен протокол проверки импорта.",
+        "fixed_answers": [],
+    },
+    {
         "id": "negated_report",
         "topic": "Ритейл",
         "draft": "Не нужно создавать новый отчёт",
@@ -160,6 +194,8 @@ def unsupported_fields(card: dict[str, str], draft: str, answers: list[dict[str,
 
 def main() -> None:
     usage_events = []
+    # Manual fixture evidence only: no recording in the production service.
+    model_events = []
     original_create = AsyncCompletions.create
 
     async def observed_create(client, *args, **kwargs):
@@ -169,6 +205,11 @@ def main() -> None:
             "input_tokens": usage.prompt_tokens,
             "output_tokens": usage.completion_tokens,
             "total_tokens": usage.total_tokens,
+        })
+        model_events.append({
+            "model": result.model,
+            "input": json.loads(kwargs["messages"][1]["content"]),
+            "content": result.choices[0].message.content,
         })
         return result
 
@@ -184,6 +225,7 @@ def main() -> None:
                     "/api/ai/questions", json={"draft": case["draft"], "topic": case["topic"]})
                 record["questions_latency_ms"] = round((time.perf_counter() - started) * 1000)
                 record["questions_status"] = question_response.status_code
+                record["questions_model_responses"] = model_events[usage_start:]
                 if question_response.status_code != 200:
                     record["questions_error"] = question_response.json()
                     record["questions_usage"] = usage_summary(usage_events[usage_start:])
@@ -208,6 +250,7 @@ def main() -> None:
                 )
                 record["card_latency_ms"] = round((time.perf_counter() - started) * 1000)
                 record["card_status"] = card_response.status_code
+                record["card_model_responses"] = model_events[usage_start:]
                 record["card_usage"] = usage_summary(usage_events[usage_start:])
                 if card_response.status_code == 200:
                     record["original_card"] = card_response.json()["card"]
