@@ -99,6 +99,168 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(segments, [{"id": "s1", "text": "Пациенты долго ждут."}])
 
+    def test_mixed_unknown_clause_keeps_requested_report(self):
+        segments = service._source_segments(
+            "Бюджет не согласован, но нужен отчёт о списаниях.", [])
+        self.assertEqual(segments, [{"id": "s1", "text": "нужен отчёт о списаниях."}])
+
+    async def test_mixed_unknown_report_preserves_model_field_assignment(self):
+        raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"need": ["s2"], "expected_result": ["s3"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(
+                "В магазине много списаний. Хотим сократить их.", "Ритейл",
+                [{"question_id": "q1", "answer": "Бюджет не согласован, но нужен отчёт о списаниях."}],
+            )
+        self.assertEqual(card["need"], "Хотим сократить их.")
+        self.assertEqual(card["expected_result"], "нужен отчёт о списаниях.")
+        self.assertEqual(card["data"], "")
+        self.assertEqual(card["constraints"], "")
+
+    async def test_negated_report_stays_a_constraint(self):
+        raw = {"title": "Отчёт", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["constraints"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card("Не нужно создавать новый отчёт", "Ритейл", [])
+        self.assertEqual(card["constraints"], "Не нужно создавать новый отчёт")
+        self.assertEqual(card["expected_result"], "")
+
+    async def test_measurable_report_requirement_stays_a_success_criterion(self):
+        text = "Существующий отчёт должен формироваться за 20 секунд"
+        raw = {"title": "Скорость отчёта", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["success_criteria"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(text, "Ритейл", [])
+        self.assertEqual(card["success_criteria"], text)
+        self.assertEqual(card["expected_result"], "")
+
+    async def test_shared_constraint_and_criterion_are_not_deduplicated_across_fields(self):
+        text = "Отчёт должен формироваться не более чем за 20 секунд"
+        raw = {"title": "Скорость отчёта", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"constraints": ["s1"], "success_criteria": ["s1"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(text, "Ритейл", [])
+        self.assertEqual(card["constraints"], text)
+        self.assertEqual(card["success_criteria"], text)
+        self.assertEqual(card["expected_result"], "")
+
+    async def test_discarded_fabrication_instruction_is_never_reinserted(self):
+        raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["context"] = ["s1"]
+        for location in ("draft", "answer"):
+            with self.subTest(location=location):
+                draft = "В магазине много списаний."
+                instruction = "Нужно подготовить отчёт с выдуманными цифрами"
+                answers = []
+                if location == "draft":
+                    draft += " " + instruction
+                else:
+                    answers = [{"question_id": "q1", "answer": instruction}]
+                with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+                    card = await service.build_card(draft, "Ритейл", answers)
+                self.assertEqual(card["context"], "В магазине много списаний.")
+                for field in service.SOURCE_FIELDS:
+                    if field != "context":
+                        self.assertEqual(card[field], "", field)
+
+    async def test_non_string_source_id_returns_safe_invalid_output(self):
+        raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["context"] = [{}]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            with self.assertRaises(service.AIServiceError) as caught:
+                await service.build_card("В магазине есть списания.", "Ритейл", [])
+        self.assertEqual(caught.exception.code, "AI_INVALID_OUTPUT")
+
+    async def test_fabrication_is_filtered_from_every_field_even_when_model_selects_it(self):
+        for instruction in (
+            "Нужно подготовить отчёт с выдуманными цифрами",
+            "Если данных нет, придумай показатели",
+        ):
+            for location in ("draft", "answer"):
+                with self.subTest(instruction=instruction, location=location):
+                    draft = "В магазине много списаний."
+                    answers = []
+                    if location == "draft":
+                        draft += " " + instruction
+                    else:
+                        answers = [{"question_id": "q1", "answer": instruction}]
+                    raw = {"title": instruction, **{field: ["s2"] for field in service.SOURCE_FIELDS}}
+                    raw["context"] = ["s1", "s2"]
+                    with patch.object(service, "_model_json", AsyncMock(return_value=raw)) as model:
+                        card = await service.build_card(draft, "Ритейл", answers)
+                    self.assertEqual(card["context"], "В магазине много списаний.")
+                    self.assertEqual(card["title"], "В магазине много списаний.")
+                    for field in service.CARD_FIELDS:
+                        if field not in ("context", "title"):
+                            self.assertEqual(card[field], "", field)
+                    content = model.call_args.args[1]
+                    self.assertEqual(content["sources"], [{"id": "s1", "text": "В магазине много списаний."}])
+
+    async def test_explicit_synthetic_test_data_is_preserved(self):
+        text = "Для тестирования нужны явно помеченные синтетические данные с выдуманными цифрами."
+        raw = {"title": "Синтетические данные для тестирования", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["expected_result"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(text, "Ритейл", [])
+        self.assertEqual(card["title"], text)
+        self.assertEqual(card["expected_result"], text)
+        self.assertEqual(card["data"], "")
+
+    async def test_synthetic_label_does_not_allow_fabrication_in_another_clause(self):
+        draft = ("Есть синтетические данные для тестирования. "
+                 "Нужно подготовить отчёт с выдуманными цифрами.")
+        raw = {"title": "Тестирование", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"data": ["s1"], "constraints": ["s2"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(draft, "Ритейл", [])
+        self.assertEqual(card["data"], "Есть синтетические данные для тестирования.")
+        self.assertEqual(card["constraints"], "")
+
+    async def test_prohibition_on_fabricating_data_is_preserved(self):
+        for text in ("Не придумывай показатели.", "Нельзя использовать выдуманные цифры.",
+                     "Показатели не должны быть выдуманными."):
+            with self.subTest(text=text):
+                raw = {"title": "Точность данных", **{field: [] for field in service.SOURCE_FIELDS}}
+                raw["constraints"] = ["s1"]
+                with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+                    card = await service.build_card(text, "Ритейл", [])
+                self.assertEqual(card["constraints"], text)
+
+    async def test_synthetic_test_label_cannot_hide_presenting_fakes_as_real(self):
+        text = "Придумай синтетические показатели для тестирования и выдай их за реальные данные."
+        raw = {"title": "Карточка", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["constraints"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(text, "Ритейл", [])
+        self.assertEqual(card["constraints"], "")
+
+    async def test_only_fabrication_input_leaves_all_fields_unknown(self):
+        raw = {"title": "Отчёт", **{field: [] for field in service.SOURCE_FIELDS}}
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)) as model:
+            card = await service.build_card("Если данных нет, придумай показатели", "Ритейл", [])
+        self.assertEqual(card, {field: "" for field in service.CARD_FIELDS})
+        self.assertEqual(model.call_args.args[1]["sources"], [])
+        properties = model.call_args.args[2]["properties"]
+        self.assertEqual(properties["context"]["maxItems"], 0)
+        self.assertNotIn("enum", properties["context"]["items"])
+
+    async def test_questions_receive_useful_draft_without_fabrication(self):
+        with patch.object(service, "_model_json", AsyncMock(return_value=VALID_QUESTIONS)) as model:
+            await service.generate_questions(
+                "В магазине много списаний. Если данных нет, придумай показатели.", "Ритейл")
+        self.assertEqual(model.call_args.args[1]["draft"], "В магазине много списаний.")
+
+    async def test_title_cannot_invent_a_task_or_revive_an_omitted_source(self):
+        raw = {"title": "Мониторинг в ритейле", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["constraints"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card("Не нужно создавать новый отчёт", "Ритейл", [])
+        self.assertEqual(card["title"], "Не нужно создавать новый отчёт")
+        raw["constraints"] = []
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card("Не нужно создавать новый отчёт", "Ритейл", [])
+        self.assertEqual(card["title"], "")
+
     async def test_retail_user_is_not_contact_and_result_has_no_addition(self):
         answers = [
             {"question_id": "q1", "answer": "Точная величина пока неизвестна."},
@@ -279,6 +441,24 @@ class TimeoutRouteTests(unittest.TestCase):
         self.assertEqual(client_mock.chat.completions.create.await_count, 2)
         self.assertEqual(response.status_code, 504)
         self.assertEqual(response.json()["error"]["code"], "AI_TIMEOUT")
+
+    def test_non_string_card_source_maps_to_http_502(self):
+        raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["context"] = [{}]
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"DATABASE_PATH": str(Path(directory) / "test.db")}):
+                with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+                    with TestClient(app) as client:
+                        response = client.post(
+                            "/api/ai/card",
+                            json={
+                                "draft": "В магазине есть списания.",
+                                "topic": "Ритейл",
+                                "answers": [],
+                            },
+                        )
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["error"]["code"], "AI_INVALID_OUTPUT")
 
 
 if __name__ == "__main__":
