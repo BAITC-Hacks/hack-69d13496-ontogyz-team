@@ -38,12 +38,19 @@ async function api(path, method = "GET", body = null, timeout = 12000) {
   } finally { clearTimeout(timer); }
 }
 async function action(button, fn) {
+  if (button.disabled) return;
+  const scope = button.closest("#create, form, article") || button;
+  const controls = scope === button ? [button] : [...scope.querySelectorAll("button")];
+  const disabledBefore = controls.map(control => control.disabled);
   const label = button.textContent;
-  button.disabled = true;
+  controls.forEach(control => { control.disabled = true; });
   button.setAttribute("aria-busy", "true");
   button.textContent = "Подождите…";
   try { await fn(); } catch (error) { message(error.message, true); }
-  finally { button.disabled = false; button.removeAttribute("aria-busy"); button.textContent = label; }
+  finally {
+    controls.forEach((control, index) => { control.disabled = disabledBefore[index]; });
+    button.removeAttribute("aria-busy"); button.textContent = label;
+  }
 }
 function view(name) {
   for (const section of document.querySelectorAll(".view")) section.hidden = section.id !== name;
@@ -236,12 +243,16 @@ async function loadBusiness() {
     await loadProposals();
   } catch (error) { message(error.message, true); }
 }
+let proposalRequest = 0;
 async function loadProposals(successMessage = "") {
+  const request = ++proposalRequest;
   const list = $("proposal-list"), taskId = $("business-task").value;
   list.replaceChildren();
   if (!taskId) { list.append(el("p", "Сначала опубликуйте задачу.")); message("Опубликованных задач пока нет."); return; }
   try {
     const [{proposals}, {teams}] = await Promise.all([api(`/api/tasks/${taskId}/proposals`), api("/api/teams")]);
+    if (request !== proposalRequest || $("business-task").value !== taskId) return;
+    list.replaceChildren();
     if (!proposals.length) { list.append(el("p", "Пока нет предложений.")); message("Отклики загружены: пока ни одного."); return; }
     for (const p of proposals) {
       const article = el("article"), team = teams.find(t => t.id === p.team_id), actions = el("div", null, "actions");
@@ -267,7 +278,7 @@ async function loadProposals(successMessage = "") {
       article.append(actions); list.append(article);
     }
     message(successMessage || `Отклики загружены: ${proposals.length}. Каждое решение принимается независимо.`);
-  } catch (error) { message(error.message, true); }
+  } catch (error) { if (request === proposalRequest) message(error.message, true); }
 }
 $("business-task").addEventListener("change", () => loadProposals());
 view("create");
