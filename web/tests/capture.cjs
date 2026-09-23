@@ -7,7 +7,7 @@ const path = require('node:path');
   const directory = path.join(__dirname, 'screenshots', phase);
   fs.mkdirSync(directory, {recursive:true});
   const browser = await chromium.launch({headless:true, channel:'msedge'});
-  const page = await browser.newPage({viewport:{width:1366,height:768}, reducedMotion:'reduce'});
+  const page = await browser.newPage({viewport:phase==='final'?{width:1280,height:720}:{width:1366,height:768}, reducedMotion:'reduce'});
   await page.goto('http://127.0.0.1:8001');
   await page.locator('#business-task-list article').first().waitFor({state:'attached'});
   async function shot(name) {await page.screenshot({path:path.join(directory, `${name}.png`)});}

@@ -6,7 +6,12 @@ const FIELDS = {
   expected_result: "Ожидаемый результат", success_criteria: "Критерии успеха",
   contact: "Контакт бизнеса", interaction_format: "Формат взаимодействия"
 };
-const LEVELS = {draft: "Черновик", working: "Рабочая", ready: "Готовая", priority: "Приоритетная"};
+const LEVELS = {draft: "Начальная", working: "Рабочая", ready: "Готовая", priority: "Приоритетная"};
+const FIELD_GROUPS = [
+  ["Суть задачи", ["title", "context", "need", "users"]],
+  ["Данные и результат", ["data", "expected_result", "success_criteria"]],
+  ["Условия и связь", ["constraints", "contact", "interaction_format"]]
+];
 const $ = id => document.getElementById(id);
 const state = {questions: [], card: null, taskId: null, tasks: [], businessTasks: [], teams: [], topics: [], dirty: false, sourceDirty: false, busy: false};
 
@@ -126,12 +131,16 @@ function showScore(task) {
   $("score").textContent = task.score;
   $("score-fill").style.width = `${task.score}%`;
   $("score-fill").parentElement.setAttribute("aria-valuenow", String(task.score));
-  $("level").textContent = `${LEVELS[task.level]} · ${task.status === "published" ? "опубликовано" : "не опубликовано"}`;
+  $("level").textContent = `Уровень готовности: ${LEVELS[task.level].toLowerCase()}`;
   $("score-note").hidden = task.score !== 100;
   $("score-note").textContent = task.score === 100
     ? "Заполнены и подтверждены все поля. 100/100 — это оценка заполненности, а не проверка достоверности сведений."
     : "";
-  $("task-state").textContent = `${task.status === "published" ? "Опубликовано" : "Не опубликовано"}${task.id ? ` · задача №${task.id}` : ""}`;
+  $("task-state").textContent = `Статус: ${task.status === "published" ? "опубликовано" : "черновик"} · задача №${task.id}`;
+  const nextField = task.missing_fields[0];
+  $("next-edit").hidden = !nextField;
+  $("next-edit").textContent = nextField ? `Уточнить: ${FIELDS[nextField]}` : "";
+  $("next-edit").onclick = () => focusField(nextField);
   $("breakdown").replaceChildren(...Object.entries(task.score_breakdown).map(([field, points]) => {
     const item = el("li", `${FIELDS[field]}: ${points}`);
     if (points > 0) item.classList.add("earned");
@@ -141,17 +150,27 @@ function showScore(task) {
     const item = el("li"), button = el("button", `${FIELDS[field]} (+${({context:10,need:10,data:20,expected_result:15,success_criteria:15,constraints:10,users:10,contact:5,interaction_format:5})[field]})`, "missing-link");
     button.type = "button";
     button.addEventListener("click", () => {
-      const input = $(`field-${field}`);
-      if (input) { input.focus({preventScroll:true}); input.scrollIntoView({behavior: "auto", block: "center"}); }
+      focusField(field);
     });
     item.append(button); return item;
   }));
 }
+function focusField(field) {
+  const input = $(`field-${field}`);
+  if (input) { input.focus({preventScroll:true}); input.scrollIntoView({behavior:"auto", block:"center"}); }
+}
 function resetScore() {
-  const score_breakdown = Object.fromEntries(Object.keys(FIELDS).filter(key => key !== "title").map(key => [key, 0]));
-  showScore({id: null, score: 0, level: "draft", status: "draft", score_breakdown, missing_fields: Object.keys(score_breakdown)});
-  $("level").textContent = "Новая карточка · ещё не сохранена";
-  $("task-state").textContent = "Не сохранено";
+  $("score").textContent = "—";
+  $("score-fill").style.width = "0%";
+  $("score-fill").parentElement.removeAttribute("aria-valuenow");
+  $("level").textContent = "Готовность появится после сохранения";
+  $("task-state").textContent = "Статус: не сохранено";
+  $("editor-kind").textContent = "Новая карточка от AI";
+  $("editor-title").textContent = "Проверьте карточку";
+  $("score-note").hidden = true; $("score-note").textContent = "";
+  $("breakdown").replaceChildren(); $("missing").replaceChildren();
+  $("next-edit").hidden = true; $("publish").hidden = false;
+  $("publication-hint").textContent = "Публикация доступна при любом рейтинге.";
 }
 $("ask").addEventListener("click", event => action(event.currentTarget, async () => {
   const draft = $("draft").value.trim(), topic = $("topic").value.trim();
@@ -174,8 +193,14 @@ $("ask").addEventListener("click", event => action(event.currentTarget, async ()
 
 function renderEditor(card, confirmedFields = [], dirty = true) {
   const target = $("card-fields"); target.replaceChildren();
+  const groupTargets = {};
+  for (const [title, keys] of FIELD_GROUPS) {
+    const group = el("fieldset", null, "field-group"), grid = el("div", null, "field-grid");
+    group.append(el("legend", title), grid); target.append(group);
+    for (const key of keys) groupTargets[key] = grid;
+  }
   for (const [key, title] of Object.entries(FIELDS)) {
-    const area = el("div");
+    const area = el("div", null, key === "title" ? "title-field" : "");
     const label = el("label", title); label.htmlFor = `field-${key}`;
     const input = key === "title" ? el("input") : el("textarea");
     input.id = `field-${key}`; input.value = card[key] || "";
@@ -196,7 +221,7 @@ function renderEditor(card, confirmedFields = [], dirty = true) {
       checkbox.addEventListener("change", markDirty);
       confirm.prepend(checkbox); area.append(confirm);
     }
-    target.append(area);
+    groupTargets[key].append(area);
   }
   $("editor").hidden = false;
   $("editor-topic").append($("topic-control"));
@@ -256,7 +281,7 @@ function renderBusinessTasks() {
   if (!state.businessTasks.length) { list.append(el("p", "Сохранённых задач пока нет.")); return; }
   for (const task of state.businessTasks) {
     const item = el("article", null, "saved-task"), text = el("div"), button = el("button", "Продолжить редактирование", "secondary");
-    text.append(el("strong", task.card.title || "Без названия"), el("span", `${task.topic} · ${task.score}/100 · ${task.status === "published" ? "Опубликовано" : "Черновик"}`));
+    text.append(el("strong", task.card.title || "Без названия"), el("span", `${task.topic} · Готовность: ${task.score}/100`), el("span", `Статус: ${task.status === "published" ? "опубликовано" : "черновик"}`));
     button.type = "button";
     button.addEventListener("click", () => action(button, () => openSavedTask(task.id)));
     item.append(text, button); list.append(item);
@@ -317,7 +342,7 @@ function renderTasks() {
   for (const task of state.tasks) {
     const box = el("article", null, "task-card"), chips = el("div", null, "chips");
     box.classList.add(`level-${task.level}`);
-    chips.append(el("span", task.topic, "chip"), el("span", `Уровень: ${LEVELS[task.level]} · ${task.score}/100`, `chip level-chip level-${task.level}`));
+    chips.append(el("span", task.topic, "chip"), el("span", `Готовность: ${task.score}/100 · ${LEVELS[task.level]}`, `chip level-chip level-${task.level}`));
     const open = el("button", "Посмотреть и откликнуться", "secondary");
     open.addEventListener("click", () => openTask(task.id));
     box.append(chips, el("h2", task.card.title), el("p", task.card.need || task.card.context || "Описание ещё уточняется"), open);

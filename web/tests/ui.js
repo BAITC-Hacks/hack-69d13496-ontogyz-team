@@ -102,7 +102,7 @@
   byId("draft").value="В магазине много списаний. Хотим их сократить.";
   byId("ask").click(); await idle();
   byId("generate").click(); await idle();
-  check(byId("score").textContent==="0" && byId("task-state").textContent==="Не сохранено","Новая AI-карточка сбрасывает старые рейтинг и статус");
+  check(byId("score").textContent==="—" && byId("task-state").textContent==="Статус: не сохранено","Новая AI-карточка сбрасывает старые рейтинг и статус (до ответа сервера — без балла)");
   testRace=true;
   doc.querySelector('[data-view="business"]').click();
   await new Promise(resolve=>setTimeout(resolve,200));

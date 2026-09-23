@@ -13,12 +13,12 @@ const questions = [
 ];
 (async () => {
   const browser = await chromium.launch({channel:'msedge',headless:true});
-  const directory=path.join(__dirname,'screenshots','flow');
+  const directory=path.join(__dirname,'screenshots','flow-final');
   fs.mkdirSync(directory,{recursive:true});
   try {
-    for (const width of [1366,390]) {
+    for (const width of [1280,1366,390,375]) {
       const taskTitle=card.title+' '+width+' / '+new Date().toISOString().slice(11,19);
-      const page=await browser.newPage({viewport:{width,height:768},reducedMotion:'reduce'});
+      const page=await browser.newPage({viewport:{width,height:width===1280?720:768},reducedMotion:'reduce'});
       const errors=[]; page.on('pageerror',error=>errors.push(error.message));
       let failAI=true;
       await page.route('**/api/ai/questions',route=>route.fulfill({json:failAI
@@ -65,6 +65,7 @@ const questions = [
       await page.locator('#generate').click();
       await page.locator('#field-title').waitFor();
       assert.equal(await page.locator('#editor-kind').textContent(),'Новая карточка от AI');
+      assert.equal(await page.locator('#score').innerText(),'—');
       await shot('new-editor');
       await page.locator('#field-title').fill(taskTitle);
       await page.locator('#save').click();
