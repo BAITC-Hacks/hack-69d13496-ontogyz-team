@@ -34,6 +34,7 @@ def config(name: str) -> str:
 
 QUESTION_SCHEMA = {
     "type": "object", "properties": {"questions": {"type": "array",
+        "minItems": 3, "maxItems": 5,
         "items": {"type": "object", "properties": {
             "id": {"type": "string"},
             "field": {"type": "string", "enum": list(WEIGHTS)},
@@ -81,7 +82,7 @@ async def _model_json(instructions: str, content: dict, schema: dict, schema_nam
                     raise AIServiceError("AI_UNAVAILABLE", "AI недоступен: проверьте настройки модели и доступа") from exc
     except AIServiceError:
         raise
-    except (ValueError, IndexError, KeyError, TypeError) as exc:
+    except (AttributeError, ValueError, IndexError, KeyError, TypeError) as exc:
         raise AIServiceError("AI_INVALID_OUTPUT", "AI вернул некорректный ответ") from exc
 
 
@@ -92,6 +93,8 @@ async def generate_questions(draft: str, topic: str) -> list[dict[str, str]]:
         "Спроси 3–5 коротких, разных, уместных вопросов о важных недостающих данных. "
         "Не придумывай факты, сроки и метрики. Ответ строго по JSON-схеме.",
         {"draft": draft, "topic": topic}, QUESTION_SCHEMA, "task_questions")
+    if not isinstance(raw, dict):
+        raise AIServiceError("AI_INVALID_OUTPUT", "AI вернул некорректные вопросы")
     questions = raw.get("questions")
     if not isinstance(questions, list) or not 3 <= len(questions) <= 5:
         raise AIServiceError("AI_INVALID_OUTPUT", "AI вернул неверное число вопросов")
@@ -100,7 +103,8 @@ async def generate_questions(draft: str, topic: str) -> list[dict[str, str]]:
            q["field"] not in WEIGHTS or len(q["text"]) > 400 or len(q["id"]) > 30
            for q in questions):
         raise AIServiceError("AI_INVALID_OUTPUT", "AI вернул некорректные вопросы")
-    if len({q["id"] for q in questions}) != len(questions) or len({q["field"] for q in questions}) != len(questions):
+    normalized_texts = {" ".join(q["text"].split()).casefold() for q in questions}
+    if len({q["id"] for q in questions}) != len(questions) or len(normalized_texts) != len(questions):
         raise AIServiceError("AI_INVALID_OUTPUT", "AI повторил вопрос")
     return questions
 
