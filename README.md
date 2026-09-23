@@ -18,6 +18,8 @@ py -m venv .venv
 
 Для проверки API: `.\.venv\Scripts\python.exe -m unittest discover -s tests -v`.
 
+Проверки AI-модуля без внешних запросов: `.\.venv\Scripts\python.exe -m unittest app.ai.test_service -v`. Эти тесты используют подмену клиента и не подтверждают доступ к модели или качество реальных ответов. Если ни `py`, ни `python` не доступны в PATH, создайте `.venv` через полный путь к установленному Python: `& 'C:\путь\к\python.exe' -m venv .venv`.
+
 ## Архитектура
 
 Один процесс FastAPI отдаёт HTML/CSS/JavaScript и JSON API. SQLite хранит задачи, команды, отклики и подтверждённые этапы. Сервер рассчитывает рейтинг из подтверждённых полей; AI задаёт вопросы и помогает составить редактируемую карточку. Схемы и примеры: `docs/CONTRACTS.md`.
