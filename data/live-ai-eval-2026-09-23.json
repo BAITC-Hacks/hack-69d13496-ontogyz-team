@@ -1,0 +1,127 @@
+{
+  "date": "2026-09-23",
+  "model_requested": "gpt-4.1-mini-2025-04-14",
+  "source": "Synthetic examples; questions and cards transcribed from browser UI, token counts from SDK usage. Not raw API response captures.",
+  "billing_verified": false,
+  "usage": {
+    "input_tokens": 1154,
+    "output_tokens": 498,
+    "requests": 4,
+    "estimated_usd": 0.0012584,
+    "pricing_usd_per_million": {
+      "input": 0.4,
+      "output": 1.6
+    },
+    "pricing_source": "https://developers.openai.com/api/docs/models/gpt-4.1-mini"
+  },
+  "cases": [
+    {
+      "id": "retail",
+      "code_sha": "643c241",
+      "draft": "В магазине много списаний продуктов. Хотим сократить их.",
+      "topic": "Ритейл",
+      "questions": [
+        "Какова текущая средняя величина списаний продуктов в магазине?",
+        "Какой уровень сокращения списаний вы хотите достичь?",
+        "Какие данные о списаниях продукции сейчас собираются и доступны?",
+        "Есть ли ограничения по изменению процессов хранения и продажи в магазине?",
+        "Кто в вашей компании будет использовать рекомендации по сокращению списаний?"
+      ],
+      "answers": [
+        "Точная величина пока неизвестна.",
+        "Целевой процент пока не согласован. Сначала нужен отчёт о причинах списаний.",
+        "Есть обезличенный CSV со списаниями за четыре недели: дата, товар, количество и причина.",
+        "Не менять кассовую систему. Анализировать только предоставленный CSV.",
+        "Управляющий магазином."
+      ],
+      "original_card": {
+        "title": "Сокращение списаний продуктов в магазине",
+        "context": "В магазине имеется значительное количество списаний продуктов.",
+        "need": "Необходимо сократить списания продуктов.",
+        "users": "Управляющий магазином",
+        "data": "Обезличенный CSV файл со списаниями за четыре недели, содержащий дату, товар, количество и причину списания.",
+        "constraints": "Не менять кассовую систему; анализировать только предоставленный CSV файл.",
+        "expected_result": "Отчет о причинах списаний продуктов и рекомендации по их сокращению.",
+        "success_criteria": "",
+        "contact": "Управляющий магазином",
+        "interaction_format": ""
+      },
+      "assessment": {
+        "questions_relevant": true,
+        "question_count": 5,
+        "unsupported_additions": [
+          "contact: пользователь результата ошибочно представлен как контакт бизнеса",
+          "expected_result: рекомендации добавлены сверх указанного отчёта"
+        ],
+        "manual_corrections": {
+          "contact": "",
+          "expected_result": "Отчёт о причинах списаний продуктов."
+        }
+      },
+      "browser_flow": "Edited card, saved at 0, confirmed context/need/users, published at 30, filtered catalog, submitted two proposals, selected both, confirmed one milestone; repeat HTTP confirmation left points at 10.",
+      "tokens": {
+        "questions": {
+          "input": 196,
+          "output": 132
+        },
+        "card": {
+          "input": 377,
+          "output": 126
+        }
+      }
+    },
+    {
+      "id": "education",
+      "code_sha": "1a4d8cf",
+      "draft": "Студенты записываются на консультации в разных чатах. Нужен единый порядок записи.",
+      "topic": "Образование",
+      "questions": [
+        "Как сейчас происходит запись на консультации в разных чатах?",
+        "Какие проблемы возникают из-за текущего разрозненного порядка записи?",
+        "Что вы хотите получить в результате внедрения единого порядка записи?",
+        "Кто именно будет пользоваться единым порядком записи — студенты, преподаватели, администраторы?",
+        "Есть ли какие-то технические или организационные ограничения на внедрение нового порядка записи?"
+      ],
+      "answers": [
+        "Студенты пишут преподавателям в разных чатах.",
+        "Записи сложно собрать в общий список.",
+        "Нужна одна форма записи и общий список консультаций.",
+        "Студенты и преподаватели.",
+        "Ограничения пока не согласованы. Контакт бизнеса, формат взаимодействия, исходные данные и критерии успеха не сообщены."
+      ],
+      "original_card": {
+        "title": "Единый порядок записи на консультации",
+        "context": "Студенты записываются на консультации в разных чатах и пишут преподавателям в разных чатах.",
+        "need": "Нужна одна форма записи и общий список консультаций, чтобы собрать записи студентов в единый список.",
+        "users": "Студенты и преподаватели.",
+        "data": "",
+        "constraints": "",
+        "expected_result": "Общий список консультаций с единым порядком записи студентов.",
+        "success_criteria": "",
+        "contact": "",
+        "interaction_format": ""
+      },
+      "assessment": {
+        "questions_relevant": true,
+        "question_count": 5,
+        "unsupported_additions": [],
+        "limitations": "One reviewed example only; not proof of general factual reliability.",
+        "manual_corrections": {
+          "context": "Студенты записываются на консультации в разных чатах.",
+          "expected_result": "Одна форма записи и общий список консультаций."
+        }
+      },
+      "browser_flow": "Edited and saved at 0, confirmed context/need/users, published at 30, server topic/level filters, invalid URL error then successful proposal, selected team, confirmed milestone. Team total 20 across two distinct milestones, this milestone 10; confirmation button disabled. Browser console errors/warnings empty.",
+      "tokens": {
+        "questions": {
+          "input": 204,
+          "output": 140
+        },
+        "card": {
+          "input": 377,
+          "output": 100
+        }
+      }
+    }
+  ]
+}
