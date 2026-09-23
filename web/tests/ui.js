@@ -32,8 +32,8 @@
     } else if (path === "/api/business/tasks") body={tasks:saved?[saved]:[]};
     else if (path === "/api/tasks/91" && method === "GET") body=saved;
     else if (path.endsWith("/proposals")) body={proposals:[{id:1,team_id:1,idea:path.includes('/1/')?'СТАРАЯ ЗАДАЧА':'НОВАЯ ЗАДАЧА',plan:'План проверки',duration_days:14,points:0,status:'pending',prototype_url:'https://example.org/test'}]};
-    else if (path === "/api/tasks") body={tasks:testRace?[{id:1,card,score:30},{id:2,card,score:30}]:[]};
-    else if (path === "/api/teams") body={teams:[]};
+    else if (path === "/api/tasks") body={tasks:testRace?[{id:1,card,topic:"Ритейл",score:30,level:"draft"},{id:2,card,topic:"Ритейл",score:30,level:"draft"},{id:3,card,topic:"Экология",score:95,level:"priority"}]:[]};
+    else if (path === "/api/teams") body={teams:[{id:1,name:"Команда 1",points:0,skills:["Аналитика","UX"],technologies:["Python","FastAPI"]}]};
     else throw new Error(`Unexpected test request: ${method} ${path}`);
     return new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json"}});
   };
@@ -50,6 +50,7 @@
   check(byId("answer-q1").value==="Менеджеры магазина" && !byId("generate").disabled && byId("notice").textContent.includes("Тестовая ошибка"),"Ответы сохранены после ошибки; повтор доступен");
   failCard=false;
   byId("generate").click(); await idle();
+  check(byId("stage-number").textContent==="03 / 03" && byId("stage-text").textContent.includes("Проверить"),"Этапы меняются после вопросов и AI-карточки");
   byId("field-title").value="Ручная правка сохранена";
   for(const key of ["context","need","users"]) byId(`confirm-${key}`).checked=true;
   for(const name of ["catalog","business","create"]) {doc.querySelector(`[data-view="${name}"]`).click(); await idle();}
@@ -72,6 +73,8 @@
   const confirmationRemoved=!byId("confirm-context").checked;
   byId("save").click(); await idle();
   const scoreAfterRemoval=byId("score").textContent;
+  [...byId("missing").querySelectorAll("button")].find(button=>button.textContent.includes("Контекст")).click();
+  check(doc.activeElement===byId("field-context"),"Подсказка рейтинга переводит к нужному полю");
   byId("confirm-context").click(); byId("save").click(); await idle();
   check(confirmationRemoved && scoreBeforeSave==="30" && dirtyExplainsScore && scoreAfterRemoval==="20" && byId("score").textContent==="30","Изменение снимает подтверждение: рейтинг 30 → 20 → 30 после повторного подтверждения");
   for(const key of ["context","need","users","data","constraints","expected_result","success_criteria","contact","interaction_format"]) {
@@ -100,7 +103,7 @@
   byId("business-task").value="2";
   byId("business-task").dispatchEvent(new win.Event("change"));
   await new Promise(resolve=>setTimeout(resolve,500));
-  check(byId("proposal-list").textContent.includes("НОВАЯ ЗАДАЧА") && !byId("proposal-list").textContent.includes("СТАРАЯ ЗАДАЧА"),"Поздний ответ предыдущей задачи не смешивает отклики");
+  check(byId("proposal-list").textContent.includes("НОВАЯ ЗАДАЧА") && !byId("proposal-list").textContent.includes("СТАРАЯ ЗАДАЧА") && byId("proposal-list").textContent.includes("Аналитика") && byId("proposal-list").textContent.includes("FastAPI"),"Поздний ответ не смешивает отклики; навыки и технологии видны");
   doc.querySelector('[data-view="create"]').click();
   output.textContent += "\nЗавершено. Это тестовые ответы, а не реальный AI-прогон.";
 })().catch(error=>{document.getElementById("results").textContent += `\nERROR ${error.message}`;});

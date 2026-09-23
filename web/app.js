@@ -16,6 +16,10 @@ function el(tag, text, className) {
   if (className) node.className = className;
   return node;
 }
+function setStage(number, text) {
+  $("stage-number").textContent = number;
+  $("stage-text").textContent = text;
+}
 function message(text, error = false) {
   $("notice").textContent = text;
   $("notice").classList.toggle("error", error);
@@ -93,7 +97,15 @@ function showScore(task) {
     if (points > 0) item.classList.add("earned");
     return item;
   }));
-  $("missing").replaceChildren(...task.missing_fields.map(field => el("li", `${FIELDS[field]} (+${({context:10,need:10,data:20,expected_result:15,success_criteria:15,constraints:10,users:10,contact:5,interaction_format:5})[field]})`)));
+  $("missing").replaceChildren(...task.missing_fields.map(field => {
+    const item = el("li"), button = el("button", `${FIELDS[field]} (+${({context:10,need:10,data:20,expected_result:15,success_criteria:15,constraints:10,users:10,contact:5,interaction_format:5})[field]})`, "missing-link");
+    button.type = "button";
+    button.addEventListener("click", () => {
+      const input = $(`field-${field}`);
+      if (input) { input.scrollIntoView({behavior: "smooth", block: "center"}); input.focus(); }
+    });
+    item.append(button); return item;
+  }));
 }
 function resetScore() {
   const score_breakdown = Object.fromEntries(Object.keys(FIELDS).filter(key => key !== "title").map(key => [key, 0]));
@@ -115,7 +127,8 @@ $("ask").addEventListener("click", event => action(event.currentTarget, async ()
     list.append(label, input);
   }
   $("questions").hidden = false;
-  message("Ответьте на вопросы и проверьте карточку перед публикацией.");
+  setStage("02 / 03", "Ответить на вопросы");
+  message("Вопросы готовы. Ответьте на известные вам факты.");
 }));
 
 function renderEditor(card, confirmedFields = [], dirty = true) {
@@ -156,6 +169,7 @@ $("generate").addEventListener("click", event => action(event.currentTarget, asy
   state.card = data.card; state.taskId = null;
   resetScore();
   renderEditor(data.card);
+  setStage("03 / 03", "Проверить и сохранить");
   message("Проверьте карточку: AI может ошибаться. Подтвердите только известные вам сведения.");
 }));
 
@@ -175,6 +189,7 @@ async function saveCard() {
     : await api("/api/tasks", "POST", payload);
   state.taskId = task.id; state.card = task.card; showScore(task); upsertBusinessTask(task);
   markSaved();
+  setStage("03 / 03", task.status === "published" ? "Дополнить публикацию" : "Сохранено — можно публиковать");
   message(`Карточка сохранена. Рейтинг ${task.score}/100 (${LEVELS[task.level].toLowerCase()}).`);
   return task;
 }
@@ -183,6 +198,7 @@ $("publish").addEventListener("click", event => action(event.currentTarget, asyn
   await saveCard();
   const task = await api(`/api/tasks/${state.taskId}/publish`, "POST", {});
   showScore(task); upsertBusinessTask(task);
+  setStage("Готово", "Опубликовано — можно дополнить");
   message(`Задача «${task.card.title}» опубликована. Она доступна всем командам, рейтинг ${task.score}/100.`);
 }));
 
@@ -217,6 +233,7 @@ async function openSavedTask(id) {
   $("topic").value = task.topic;
   renderEditor(task.card, task.confirmed_fields, false);
   showScore(task);
+  setStage("03 / 03", task.status === "published" ? "Продолжить публикацию" : "Продолжить черновик");
   message(`Задача №${task.id} открыта. Следующее сохранение обновит её без создания копии.`);
   $("editor").scrollIntoView({behavior: "smooth", block: "start"});
 }
@@ -249,7 +266,8 @@ function renderTasks() {
   if (!state.tasks.length) { list.append(el("p", "Задач с такими параметрами пока нет.")); return; }
   for (const task of state.tasks) {
     const box = el("article", null, "task-card"), chips = el("div", null, "chips");
-    chips.append(el("span", task.topic, "chip"), el("span", `${LEVELS[task.level]} · ${task.score}/100`, "chip"));
+    box.classList.add(`level-${task.level}`);
+    chips.append(el("span", task.topic, "chip"), el("span", `Уровень: ${LEVELS[task.level]} · ${task.score}/100`, `chip level-chip level-${task.level}`));
     const open = el("button", "Посмотреть и откликнуться", "secondary");
     open.addEventListener("click", () => openTask(task.id));
     box.append(chips, el("h2", task.card.title), el("p", task.card.need || task.card.context || "Описание ещё уточняется"), open);
@@ -328,7 +346,9 @@ async function loadProposals(successMessage = "") {
     if (!proposals.length) { list.append(el("p", "Пока нет предложений.")); message("Отклики загружены: пока ни одного."); return; }
     for (const p of proposals) {
       const article = el("article"), team = teams.find(t => t.id === p.team_id), actions = el("div", null, "actions");
-      article.append(el("h3", `${team?.name || "Команда"} · ${p.status === "selected" ? "Выбрана" : p.status === "rejected" ? "Отклонена" : "Ожидает решения"}`),
+      const profile = el("div", null, "team-profile");
+      profile.append(el("span", `Навыки: ${team?.skills?.join(", ") || "не указаны"}`), el("span", `Технологии: ${team?.technologies?.join(", ") || "не указаны"}`));
+      article.append(el("h3", `${team?.name || "Команда"} · ${p.status === "selected" ? "Выбрана" : p.status === "rejected" ? "Отклонена" : "Ожидает решения"}`), profile,
         el("p", p.idea), el("p", `План: ${p.plan}`), el("p", `Срок: ${p.duration_days} дн. · Баллы команды: ${team?.points ?? 0} · За этот этап: ${p.points}`, "proposal-meta"));
       const link = el("a", "Открыть прототип"); link.href = p.prototype_url; link.target = "_blank"; link.rel = "noopener noreferrer"; article.append(link);
       for (const [status, title] of [["selected","Выбрать"],["rejected","Отклонить"]]) {
