@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Sana Challenge Hub</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script defer src="/static/app.js"></script>
+</head>
+<body>
+  <header><div class="shell top"><div><strong class="brand">AI Sana <span>Challenge Hub</span></strong><small>От бизнес-задачи к решению</small></div><nav><button type="button" data-view="create" class="selected">Создать задачу</button><button type="button" data-view="catalog">Каталог</button><button type="button" data-view="business">Отклики бизнеса</button></nav></div></header>
+  <main class="shell">
+    <p class="demo">Демонстрационный режим: бизнес и команды переключаются здесь без регистрации.</p>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <section id="create" class="view">
+      <div class="intro"><div><span class="eyebrow">Для бизнеса</span><h1>Расскажите, какую задачу нужно решить</h1><p>Начните с короткого описания. Вопросы помогут команде понять, за что браться.</p></div><div class="stage">01 / 03<br><b>Описать → дополнить → опубликовать</b></div></div>
+      <div class="grid"><div class="panel"><label for="topic">Тема</label><input id="topic" maxlength="80" value="Ритейл"><label for="draft">Описание потребности</label><textarea id="draft" rows="5" maxlength="6000" placeholder="Например: в нашем магазине много списаний продуктов, хотим их сократить..."></textarea><button type="button" id="ask" class="primary">Получить уточняющие вопросы</button><div id="questions" hidden><h2>Уточняющие вопросы</h2><div id="question-list"></div><button type="button" id="generate" class="primary">Составить карточку</button></div></div>
+        <aside class="panel side"><h2>Рейтинг готовности</h2><strong class="score"><span id="score">0</span><small> / 100</small></strong><div class="meter"><i id="score-fill"></i></div><p id="level">Пока нет подтверждённой карточки</p><h3>Начисленные баллы</h3><ul id="breakdown"></ul><h3>Что повысит рейтинг</h3><ul id="missing"></ul><p class="hint">Баллы считаются только за заполненные и подтверждённые сведения. Даже задачи с низким рейтингом доступны в каталоге.</p></aside></div>
+      <section id="editor" class="panel editor" hidden><div class="line"><div><span class="eyebrow">Черновик от AI</span><h2>Проверьте карточку</h2><p>Исправьте текст и отметьте сведения, которые подтверждаете.</p></div><span id="task-state" class="tag">Не опубликовано</span></div><div id="card-fields" class="field-grid"></div><div class="actions"><button type="button" id="save" class="primary">Сохранить и пересчитать рейтинг</button><button type="button" id="publish" class="secondary">Опубликовать в каталоге</button></div></section>
+    </section>
+    <section id="catalog" class="view" hidden><div class="intro"><div><span class="eyebrow">Для студенческих команд</span><h1>Открытый каталог задач</h1><p>Выбирайте интересную задачу самостоятельно. Рейтинг показывает, насколько она готова к работе.</p></div></div><div class="panel filters"><label>Тема <select id="topic-filter"><option value="">Все темы</option></select></label><label>Готовность <select id="level-filter"><option value="">Любая</option><option value="draft">Черновик 0–39</option><option value="working">Рабочая 40–69</option><option value="ready">Готовая 70–89</option><option value="priority">Приоритетная 90–100</option></select></label><button type="button" id="refresh" class="secondary">Обновить</button></div><div id="task-list" class="cards"></div><section id="task-detail" class="panel" hidden></section></section>
+    <section id="business" class="view" hidden><div class="intro"><div><span class="eyebrow">Решение за бизнесом</span><h1>Предложения команд</h1><p>Вы можете выбрать несколько команд, отклонить предложения или пока никого не выбирать.</p></div></div><div class="panel"><label>Задача <select id="business-task"></select></label><div id="proposal-list"></div></div></section>
+  </main>
+  <footer class="shell">AI Sana Challenge Hub · Демонстрационный MVP</footer>
+</body>
+</html>
