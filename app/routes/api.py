@@ -1,5 +1,6 @@
 import json
 from sqlite3 import IntegrityError
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 
@@ -82,6 +83,21 @@ def list_tasks(topic: str | None = None, level: str | None = None):
 def get_task(task_id: int):
     with connection() as db:
         return task_from_row(db, task_row(db, task_id))
+
+
+@router.get("/business/tasks")
+def list_business_tasks(status: Literal["draft", "published"] | None = None):
+    """All saved tasks in the explicit shared demo, newest first.
+
+    This is not an ownership or authorization boundary. The public catalog
+    continues to return only published tasks, ordered by readiness.
+    """
+    with connection() as db:
+        if status is None:
+            rows = db.execute("SELECT * FROM tasks ORDER BY id DESC").fetchall()
+        else:
+            rows = db.execute("SELECT * FROM tasks WHERE status=? ORDER BY id DESC", (status,)).fetchall()
+        return {"tasks": [task_from_row(db, row) for row in rows]}
 
 
 @router.get("/teams")
