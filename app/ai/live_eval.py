@@ -14,6 +14,30 @@ from app.main import app
 
 CASES = [
     {
+        "id": "negated_report",
+        "topic": "Ритейл",
+        "draft": "Не нужно создавать новый отчёт",
+        "fixed_answers": [],
+    },
+    {
+        "id": "measurable_report",
+        "topic": "Ритейл",
+        "draft": "Существующий отчёт должен формироваться за 20 секунд",
+        "fixed_answers": [],
+    },
+    {
+        "id": "fabricated_report",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Нужно подготовить отчёт с выдуманными цифрами",
+        "fixed_answers": [],
+    },
+    {
+        "id": "report_with_acceptance_and_constraint",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Нужен отчёт о причинах списаний. Не нужно создавать новый отчёт. Существующий отчёт должен формироваться за 20 секунд.",
+        "fixed_answers": [],
+    },
+    {
         "id": "mixed_unknown_report",
         "topic": "Ритейл",
         "draft": "В магазине много списаний. Хотим сократить их.",
@@ -168,7 +192,7 @@ def main() -> None:
                 questions = question_response.json()["questions"]
                 record["questions"] = questions
                 record["questions_usage"] = usage_summary(usage_events[usage_start:])
-                answers = case.get("fixed_answers") or [
+                answers = case["fixed_answers"] if "fixed_answers" in case else [
                     {
                         "question_id": question["id"],
                         "answer": case["answers"].get(question["field"], "Неизвестно, сведения не сообщены."),

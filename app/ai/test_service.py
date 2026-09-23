@@ -104,9 +104,9 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
             "Бюджет не согласован, но нужен отчёт о списаниях.", [])
         self.assertEqual(segments, [{"id": "s1", "text": "нужен отчёт о списаниях."}])
 
-    async def test_explicit_report_moves_from_need_to_expected_result(self):
+    async def test_mixed_unknown_report_preserves_model_field_assignment(self):
         raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
-        raw.update({"need": ["s2", "s3"], "expected_result": ["s2"]})
+        raw.update({"need": ["s2"], "expected_result": ["s3"]})
         with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
             card = await service.build_card(
                 "В магазине много списаний. Хотим сократить их.", "Ритейл",
@@ -116,6 +116,52 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(card["expected_result"], "нужен отчёт о списаниях.")
         self.assertEqual(card["data"], "")
         self.assertEqual(card["constraints"], "")
+
+    async def test_negated_report_stays_a_constraint(self):
+        raw = {"title": "Отчёт", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["constraints"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card("Не нужно создавать новый отчёт", "Ритейл", [])
+        self.assertEqual(card["constraints"], "Не нужно создавать новый отчёт")
+        self.assertEqual(card["expected_result"], "")
+
+    async def test_measurable_report_requirement_stays_a_success_criterion(self):
+        text = "Существующий отчёт должен формироваться за 20 секунд"
+        raw = {"title": "Скорость отчёта", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["success_criteria"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(text, "Ритейл", [])
+        self.assertEqual(card["success_criteria"], text)
+        self.assertEqual(card["expected_result"], "")
+
+    async def test_shared_constraint_and_criterion_are_not_deduplicated_across_fields(self):
+        text = "Отчёт должен формироваться не более чем за 20 секунд"
+        raw = {"title": "Скорость отчёта", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"constraints": ["s1"], "success_criteria": ["s1"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(text, "Ритейл", [])
+        self.assertEqual(card["constraints"], text)
+        self.assertEqual(card["success_criteria"], text)
+        self.assertEqual(card["expected_result"], "")
+
+    async def test_discarded_fabrication_instruction_is_never_reinserted(self):
+        raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["context"] = ["s1"]
+        for location in ("draft", "answer"):
+            with self.subTest(location=location):
+                draft = "В магазине много списаний."
+                instruction = "Нужно подготовить отчёт с выдуманными цифрами"
+                answers = []
+                if location == "draft":
+                    draft += " " + instruction
+                else:
+                    answers = [{"question_id": "q1", "answer": instruction}]
+                with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+                    card = await service.build_card(draft, "Ритейл", answers)
+                self.assertEqual(card["context"], "В магазине много списаний.")
+                for field in service.SOURCE_FIELDS:
+                    if field != "context":
+                        self.assertEqual(card[field], "", field)
 
     async def test_non_string_source_id_returns_safe_invalid_output(self):
         raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
