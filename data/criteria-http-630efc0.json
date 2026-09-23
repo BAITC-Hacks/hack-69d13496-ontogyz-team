@@ -1,0 +1,242 @@
+{
+  "source_commit": "630efc0",
+  "checks": [
+    {
+      "name": "health",
+      "passed": true
+    },
+    {
+      "name": "score_100_first_catalog",
+      "passed": true
+    },
+    {
+      "name": "catalog_sorted",
+      "passed": true
+    },
+    {
+      "name": "two_proposals_for_original_task",
+      "passed": true
+    },
+    {
+      "name": "two_selected",
+      "passed": true
+    },
+    {
+      "name": "repeat_milestone_7",
+      "passed": true
+    },
+    {
+      "name": "repeat_milestone_6",
+      "passed": true
+    },
+    {
+      "name": "team_points_unchanged_on_repeat",
+      "passed": true
+    },
+    {
+      "name": "bad_json",
+      "passed": true
+    },
+    {
+      "name": "empty_draft",
+      "passed": true
+    },
+    {
+      "name": "invalid_filter",
+      "passed": true
+    },
+    {
+      "name": "missing_task",
+      "passed": true
+    },
+    {
+      "name": "bad_proposal",
+      "passed": true
+    },
+    {
+      "name": "unconfirmed_score_zero",
+      "passed": true
+    },
+    {
+      "name": "unpublished_not_catalog",
+      "passed": true
+    },
+    {
+      "name": "publish_zero",
+      "passed": true
+    },
+    {
+      "name": "no_automatic_selection",
+      "passed": true
+    },
+    {
+      "name": "pending_milestone_rejected",
+      "passed": true
+    },
+    {
+      "name": "manual_rejection_zero_points",
+      "passed": true
+    }
+  ],
+  "snapshots": {
+    "browser_task": {
+      "id": 6,
+      "topic": "Ритейл",
+      "card": {
+        "title": "Проверка критериев: списания продуктов",
+        "context": "В магазине много списаний продуктов.",
+        "need": "Сократить списания продуктов в магазине.",
+        "users": "Управляющий магазином должен просматривать отчёт каждый день.",
+        "data": "Есть синтетический CSV для проверки: дата, товар, количество списаний.",
+        "constraints": "Нельзя менять кассовую систему.",
+        "expected_result": "Нужен отчёт о списаниях по товарам и дням.",
+        "success_criteria": "Итоговые количества в отчёте должны совпадать с исходным CSV.",
+        "contact": "Контакт для синтетического примера: demo@example.org.",
+        "interaction_format": "Управляющий отвечает на вопросы команды на еженедельном созвоне."
+      },
+      "confirmed_fields": [
+        "context",
+        "need",
+        "users",
+        "data",
+        "constraints",
+        "expected_result",
+        "success_criteria",
+        "contact",
+        "interaction_format"
+      ],
+      "status": "published",
+      "score": 100,
+      "level": "priority",
+      "score_breakdown": {
+        "context": 10,
+        "need": 10,
+        "data": 20,
+        "expected_result": 15,
+        "success_criteria": 15,
+        "constraints": 10,
+        "users": 10,
+        "contact": 5,
+        "interaction_format": 5
+      },
+      "missing_fields": [],
+      "proposals_count": 2,
+      "created_at": "2026-09-23T11:50:22.750957+00:00"
+    },
+    "browser_proposals": [
+      {
+        "id": 7,
+        "task_id": 6,
+        "team_id": 2,
+        "idea": "Отчёт с выделением товаров с наибольшими списаниями.",
+        "plan": "Проверить структуру CSV, построить сводку и согласовать её с управляющим.",
+        "duration_days": 5,
+        "prototype_url": "https://example.org/prototype-b",
+        "status": "selected",
+        "milestone_confirmed": true,
+        "points": 10,
+        "created_at": "2026-09-23T11:50:55.441325+00:00"
+      },
+      {
+        "id": 6,
+        "task_id": 6,
+        "team_id": 1,
+        "idea": "Сводная таблица списаний по товарам и дням.",
+        "plan": "Проверить CSV, сгруппировать записи, сверить итоговые количества с исходником.",
+        "duration_days": 3,
+        "prototype_url": "https://example.org/prototype-a",
+        "status": "selected",
+        "milestone_confirmed": true,
+        "points": 10,
+        "created_at": "2026-09-23T11:50:48.838284+00:00"
+      }
+    ],
+    "team_points": {
+      "teams": [
+        {
+          "id": 1,
+          "name": "Команда 1",
+          "interests": [
+            "Ритейл"
+          ],
+          "skills": [
+            "анализ данных",
+            "визуализация"
+          ],
+          "technologies": [
+            "Python",
+            "pandas"
+          ],
+          "points": 10
+        },
+        {
+          "id": 2,
+          "name": "Команда 2",
+          "interests": [
+            "Образование"
+          ],
+          "skills": [
+            "UX",
+            "веб-разработка"
+          ],
+          "technologies": [
+            "JavaScript",
+            "HTML",
+            "CSS"
+          ],
+          "points": 10
+        },
+        {
+          "id": 3,
+          "name": "Команда 3",
+          "interests": [
+            "Экология"
+          ],
+          "skills": [
+            "процессы",
+            "API",
+            "базы данных"
+          ],
+          "technologies": [
+            "Python",
+            "FastAPI",
+            "SQLite"
+          ],
+          "points": 0
+        },
+        {
+          "id": 4,
+          "name": "Команда 4",
+          "interests": [
+            "Здравоохранение"
+          ],
+          "skills": [
+            "исследование пользователей",
+            "аналитика"
+          ],
+          "technologies": [
+            "Python",
+            "SQL"
+          ],
+          "points": 0
+        },
+        {
+          "id": 5,
+          "name": "Команда 5",
+          "interests": [
+            "Транспорт"
+          ],
+          "skills": [
+            "интерфейсы",
+            "работа с геоданными"
+          ],
+          "technologies": [
+            "JavaScript",
+            "SQL"
+          ],
+          "points": 0
+        }
+      ]
+    }
+  }
+}
