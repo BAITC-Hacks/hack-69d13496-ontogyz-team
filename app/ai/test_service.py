@@ -48,12 +48,48 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(caught.exception.code, "AI_INVALID_OUTPUT")
 
     async def test_rejects_card_with_extra_field(self):
-        card = {field: "" for field in service.CARD_FIELDS}
+        card = {"title": "Название", **{field: [] for field in service.SOURCE_FIELDS}}
         card["score"] = "100"
         with patch.object(service, "_model_json", AsyncMock(return_value=card)):
             with self.assertRaises(service.AIServiceError) as caught:
                 await service.build_card("черновик", "тема", [])
         self.assertEqual(caught.exception.code, "AI_INVALID_OUTPUT")
+
+    async def test_card_uses_only_source_ids(self):
+        card = {"title": "Сократить списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        card["need"] = ["s1"]
+        card["users"] = ["s2"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=card)):
+            result = await service.build_card(
+                "Хотим сократить списания", "Ритейл",
+                [{"question_id": "q1", "answer": "Управляющий"}],
+            )
+        self.assertEqual(result["need"], "Хотим сократить списания")
+        self.assertEqual(result["users"], "Управляющий")
+        self.assertEqual(result["data"], "")
+
+    async def test_card_rejects_unknown_source_id(self):
+        card = {"title": "Ожидание пациентов", **{field: [] for field in service.SOURCE_FIELDS}}
+        card["users"] = ["s999"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=card)):
+            with self.assertRaises(service.AIServiceError) as caught:
+                await service.build_card("Пациенты долго ждут", "Здравоохранение", [])
+        self.assertEqual(caught.exception.code, "AI_INVALID_OUTPUT")
+
+    async def test_card_rejects_duplicate_source_id(self):
+        card = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        card["need"] = ["s1", "s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=card)):
+            with self.assertRaises(service.AIServiceError) as caught:
+                await service.build_card("Сократить списания", "Ритейл", [])
+        self.assertEqual(caught.exception.code, "AI_INVALID_OUTPUT")
+
+    def test_source_segments_drop_explicitly_unknown_information(self):
+        segments = service._source_segments(
+            "Пациенты долго ждут. Подробностей пока нет.",
+            [{"question_id": "q1", "answer": "Цель пока не определена."}],
+        )
+        self.assertEqual(segments, [{"id": "s1", "text": "Пациенты долго ждут."}])
 
 
 class ClientBoundaryTests(unittest.IsolatedAsyncioTestCase):
