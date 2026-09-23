@@ -22,6 +22,17 @@ function message(text, error = false) {
   $("notice").setAttribute("role", error ? "alert" : "status");
   if (text) window.scrollTo({top: 0, behavior: "smooth"});
 }
+function markDirty() {
+  if ($("editor").hidden) return;
+  $("unsaved").hidden = false;
+  $("unsaved").textContent = state.taskId
+    ? "Есть несохранённые изменения. Рейтинг относится к последней сохранённой версии."
+    : "Есть несохранённые изменения. Рейтинг появится после первого сохранения.";
+}
+function markSaved() {
+  $("unsaved").hidden = true;
+  $("unsaved").textContent = "";
+}
 async function api(path, method = "GET", body = null, timeout = 12000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -38,12 +49,19 @@ async function api(path, method = "GET", body = null, timeout = 12000) {
   } finally { clearTimeout(timer); }
 }
 async function action(button, fn) {
+  if (button.disabled) return;
+  const scope = button.closest("#create, form, article") || button;
+  const controls = scope === button ? [button] : [...scope.querySelectorAll("button")];
+  const disabledBefore = controls.map(control => control.disabled);
   const label = button.textContent;
-  button.disabled = true;
+  controls.forEach(control => { control.disabled = true; });
   button.setAttribute("aria-busy", "true");
   button.textContent = "Подождите…";
   try { await fn(); } catch (error) { message(error.message, true); }
-  finally { button.disabled = false; button.removeAttribute("aria-busy"); button.textContent = label; }
+  finally {
+    controls.forEach((control, index) => { control.disabled = disabledBefore[index]; });
+    button.removeAttribute("aria-busy"); button.textContent = label;
+  }
 }
 function view(name) {
   for (const section of document.querySelectorAll(".view")) section.hidden = section.id !== name;
@@ -63,6 +81,10 @@ function showScore(task) {
   $("score-fill").style.width = `${task.score}%`;
   $("score-fill").parentElement.setAttribute("aria-valuenow", String(task.score));
   $("level").textContent = `${LEVELS[task.level]} · ${task.status === "published" ? "опубликовано" : "не опубликовано"}`;
+  $("score-note").hidden = task.score !== 100;
+  $("score-note").textContent = task.score === 100
+    ? "Заполнены и подтверждены все поля. 100/100 — это оценка заполненности, а не проверка достоверности сведений."
+    : "";
   $("task-state").textContent = task.status === "published" ? "Опубликовано" : "Не опубликовано";
   $("breakdown").replaceChildren(...Object.entries(task.score_breakdown).map(([field, points]) => {
     const item = el("li", `${FIELDS[field]}: ${points}`);
@@ -97,15 +119,24 @@ function renderEditor(card) {
     input.id = `field-${key}`; input.value = card[key] || "";
     input.maxLength = key === "title" ? 160 : 2000;
     if (key !== "title") input.rows = 3;
+    input.addEventListener("input", () => {
+      if (key !== "title") {
+        const checkbox = $(`confirm-${key}`);
+        if (checkbox?.checked) checkbox.checked = false;
+      }
+      markDirty();
+    });
     area.append(label, input);
     if (key !== "title") {
       const confirm = el("label", "Подтверждаю эти сведения", "check");
       const checkbox = el("input"); checkbox.type = "checkbox"; checkbox.id = `confirm-${key}`;
+      checkbox.addEventListener("change", markDirty);
       confirm.prepend(checkbox); area.append(confirm);
     }
     target.append(area);
   }
   $("editor").hidden = false;
+  markDirty();
   $("editor").scrollIntoView({behavior: "smooth"});
 }
 $("generate").addEventListener("click", event => action(event.currentTarget, async () => {
@@ -132,6 +163,7 @@ async function saveCard() {
     ? await api(`/api/tasks/${state.taskId}`, "PUT", payload)
     : await api("/api/tasks", "POST", payload);
   state.taskId = task.id; state.card = task.card; showScore(task);
+  markSaved();
   message(`Карточка сохранена. Рейтинг ${task.score}/100 (${LEVELS[task.level].toLowerCase()}).`);
   return task;
 }
@@ -236,12 +268,16 @@ async function loadBusiness() {
     await loadProposals();
   } catch (error) { message(error.message, true); }
 }
+let proposalRequest = 0;
 async function loadProposals(successMessage = "") {
+  const request = ++proposalRequest;
   const list = $("proposal-list"), taskId = $("business-task").value;
   list.replaceChildren();
   if (!taskId) { list.append(el("p", "Сначала опубликуйте задачу.")); message("Опубликованных задач пока нет."); return; }
   try {
     const [{proposals}, {teams}] = await Promise.all([api(`/api/tasks/${taskId}/proposals`), api("/api/teams")]);
+    if (request !== proposalRequest || $("business-task").value !== taskId) return;
+    list.replaceChildren();
     if (!proposals.length) { list.append(el("p", "Пока нет предложений.")); message("Отклики загружены: пока ни одного."); return; }
     for (const p of proposals) {
       const article = el("article"), team = teams.find(t => t.id === p.team_id), actions = el("div", null, "actions");
@@ -267,7 +303,8 @@ async function loadProposals(successMessage = "") {
       article.append(actions); list.append(article);
     }
     message(successMessage || `Отклики загружены: ${proposals.length}. Каждое решение принимается независимо.`);
-  } catch (error) { message(error.message, true); }
+  } catch (error) { if (request === proposalRequest) message(error.message, true); }
 }
 $("business-task").addEventListener("change", () => loadProposals());
+$("topic").addEventListener("input", markDirty);
 view("create");

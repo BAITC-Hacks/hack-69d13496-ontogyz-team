@@ -1,11 +1,15 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from app.scoring import WEIGHTS
 
 
-class Card(BaseModel):
+class InputModel(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
+class Card(InputModel):
     title: str = Field(default="", max_length=160)
     context: str = Field(default="", max_length=2000)
     need: str = Field(default="", max_length=2000)
@@ -18,7 +22,7 @@ class Card(BaseModel):
     interaction_format: str = Field(default="", max_length=2000)
 
 
-class TaskInput(BaseModel):
+class TaskInput(InputModel):
     topic: str = Field(min_length=1, max_length=80)
     card: Card
     confirmed_fields: list[str] = Field(default_factory=list, max_length=9)
@@ -31,12 +35,12 @@ class TaskInput(BaseModel):
         return fields
 
 
-class DraftInput(BaseModel):
+class DraftInput(InputModel):
     draft: str = Field(min_length=10, max_length=6000)
     topic: str = Field(min_length=1, max_length=80)
 
 
-class Answer(BaseModel):
+class Answer(InputModel):
     question_id: str = Field(min_length=1, max_length=30)
     answer: str = Field(max_length=2000)
 
@@ -45,13 +49,13 @@ class CardGenerationInput(DraftInput):
     answers: list[Answer] = Field(default_factory=list, max_length=5)
 
 
-class ProposalInput(BaseModel):
-    team_id: int = Field(gt=0)
+class ProposalInput(InputModel):
+    team_id: int = Field(gt=0, strict=True)
     idea: str = Field(min_length=10, max_length=2000)
     plan: str = Field(min_length=10, max_length=2000)
-    duration_days: int = Field(ge=1, le=365)
+    duration_days: int = Field(ge=1, le=365, strict=True)
     prototype_url: HttpUrl
 
 
-class DecisionInput(BaseModel):
+class DecisionInput(InputModel):
     status: Literal["selected", "rejected"]

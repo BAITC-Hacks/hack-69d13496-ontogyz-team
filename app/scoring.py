@@ -9,13 +9,24 @@ WEIGHTS = {
     "contact": 5,
     "interaction_format": 5,
 }
-UNINFORMATIVE = {"не знаю", "нет данных", "n/a", "unknown", "?", "-"}
+UNINFORMATIVE = {
+    "не знаю", "нет данных", "данных нет", "неизвестно", "пока неизвестно",
+    "не указано", "не определено", "не предоставлено", "нет сведений",
+    "сведений нет", "нет информации", "n/a", "unknown",
+}
+
+
+def has_information(value: str) -> bool:
+    # Normalize only whole placeholder answers; preserve useful negative facts
+    # such as "Нет доступа к персональным данным".
+    text = " ".join(value.split()).casefold().strip(" .,!?:;—–-_…\"'«»()[]")
+    return bool(text) and text not in UNINFORMATIVE
 
 
 def readiness(card: dict, confirmed_fields: list[str]) -> dict:
     confirmed = set(confirmed_fields)
     breakdown = {
-        field: weight if field in confirmed and str(card.get(field, "")).strip().casefold() not in UNINFORMATIVE and str(card.get(field, "")).strip() else 0
+        field: weight if field in confirmed and has_information(str(card.get(field, ""))) else 0
         for field, weight in WEIGHTS.items()
     }
     score = sum(breakdown.values())

@@ -10,6 +10,8 @@
 
 ## Интерфейс ↔ сервер
 
+Текстовые входы очищаются от внешних пробелов до проверки минимальной длины. `team_id` и `duration_days` — целые JSON-числа; boolean и числовые строки не принимаются. В рейтинге целиком пустые формулировки («не знаю», «нет данных», «неизвестно» и другие перечисленные в `app/scoring.py`) не учитываются независимо от регистра, лишних пробелов и внешней пунктуации. Содержательные отрицательные ограничения сохраняют вес.
+
 Все ошибки: HTTP код + `{ "error": { "code": "VALIDATION_ERROR", "message": "Читаемое объяснение" } }`. Коды: `VALIDATION_ERROR` 422, `NOT_FOUND` 404, `AI_NOT_CONFIGURED` 503, `AI_UNAVAILABLE` 503, `AI_TIMEOUT` 504, `AI_INVALID_OUTPUT` 502, `CONFLICT` 409. JSON-ответы всегда ограничены сервером. Текст черновика 10–6000 символов; HTTP body до 32 KiB. UI показывает загрузку, отключает кнопку на время ожидания, умеет отменить ожидание после 50 секунд, отображает `error.message` и позволяет повторить вручную. Сервер AI ждёт не более 20 секунд на попытку, допускает один повтор только при временной ошибке, суммарно не более 45 секунд. Сервер и фронтенд не записывают секреты.
 
 | Метод и путь | Вход | Успешный ответ |
@@ -31,6 +33,12 @@
 `Task`: `id` integer, `topic` string, `card` object, `confirmed_fields` string[], `status` `draft|published`, `score` integer, `level` enum, `score_breakdown` object, `missing_fields` string[], `proposals_count` integer, `created_at` ISO 8601 string. Пример: `{ "id":1, "topic":"Ритейл", "card":{"title":"Сократить списания", "context":"В магазине остаются продукты", "need":"Снизить списания", "users":"Менеджеры", "data":"", "constraints":"", "expected_result":"", "success_criteria":"", "contact":"", "interaction_format":""}, "confirmed_fields":["context","need","users"], "status":"published", "score":30, "level":"draft", "score_breakdown":{"context":10,"need":10,"data":0,"expected_result":0,"success_criteria":0,"constraints":0,"users":10,"contact":0,"interaction_format":0}, "missing_fields":["data","expected_result","success_criteria","constraints","contact","interaction_format"], "proposals_count":0, "created_at":"2026-09-23T13:00:00Z" }`.
 
 `Team`: `id` integer, `name` string, `interests` string[], `skills` string[], `technologies` string[], `points` integer. `Proposal`: `id`, `task_id`, `team_id`, `idea`, `plan`, `duration_days`, `prototype_url`, `status` (`pending|selected|rejected`), `milestone_confirmed` boolean, `points` integer, `created_at` ISO string. `idea` и `plan` — 10–2000 символов; `duration_days` — 1–365. Без регистрации открытый демо-режим явно описывается в README. Отображать пользовательский текст безопасно через `textContent`, не HTML-разметку.
+
+## Возврат к сохранённой задаче, дополнение 23.09.2026
+
+`GET /api/business/tasks` возвращает `{ "tasks": [Task, ...] }` со всеми сохранёнными черновиками и публикациями, по `id` по убыванию. Необязательный `status=draft|published` фильтрует статус; неизвестное значение даёт 422. Это общий список явного демо-режима, не личный кабинет с авторизацией. Публичный `GET /api/tasks` по-прежнему отдаёт только опубликованные задачи, сортируя по рейтингу.
+
+Для продолжения UI получает `GET /api/tasks/{id}`, восстанавливает `topic`, `card`, `confirmed_fields`, `status`, серверный рейтинг и текущий `taskId`. Следующее сохранение — `PUT /api/tasks/{id}`; новая задача не создаётся. Сам список не восстанавливает несохранённый текст вкладки. После загрузки редактора пользовательские изменения должны снова снимать подтверждение только изменённого поля.
 
 ## Сервер ↔ AI
 
