@@ -119,6 +119,8 @@ def create_proposal(task_id: int, payload: ProposalInput):
 @router.patch("/proposals/{proposal_id}")
 def decide_proposal(proposal_id: int, payload: DecisionInput):
     with connection() as db:
+        # Serialize decisions with milestone confirmation before reading state.
+        db.execute("BEGIN IMMEDIATE")
         row = db.execute("SELECT * FROM proposals WHERE id=?", (proposal_id,)).fetchone()
         if row is None:
             fail(404, "NOT_FOUND", "Предложение не найдено")
@@ -131,6 +133,8 @@ def decide_proposal(proposal_id: int, payload: DecisionInput):
 @router.post("/proposals/{proposal_id}/milestones/confirm")
 def confirm_milestone(proposal_id: int):
     with connection() as db:
+        # Lock before the read so concurrent retries cannot award twice.
+        db.execute("BEGIN IMMEDIATE")
         row = db.execute("SELECT * FROM proposals WHERE id=?", (proposal_id,)).fetchone()
         if row is None:
             fail(404, "NOT_FOUND", "Предложение не найдено")
