@@ -11,6 +11,7 @@ header { background: #fff; border-bottom: 1px solid #e1e6ed; }
 .brand span { color: #24334d; }
 .top small { display: block; color: #64728b; margin-top: 3px; }
 nav { display: flex; gap: 6px; }
+.nav-label { align-self: center; color: #64728b; font-size: 13px; margin-right: 2px; }
 nav button { background: transparent; color: #52617b; }
 nav button.selected { color: #1353a0; background: #e9f2ff; }
 main { padding-top: 22px !important; }
@@ -41,6 +42,9 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #79b8f8; }
 .meter i { height: 100%; display: block; width: 0; background: linear-gradient(90deg, #2e82ce, #23b991); transition: width .3s; }
 .hint { font-size: 13px; }
 .side ul { padding-left: 19px; color: #55657c; line-height: 1.8; }
+.score-breakdown { list-style: none; padding: 0 !important; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.score-breakdown li { background: #f2f6fb; border-left: 4px solid #a9bad0; border-radius: 6px; padding: 7px 9px; line-height: 1.25; font-size: 12px; }
+.score-breakdown li.earned { border-left-color: #23a77b; color: #176b54; }
 .editor { margin-top: 8px; }
 .line { display: flex; justify-content: space-between; align-items: start; gap: 15px; }
 .line p { margin-top: -8px; }
