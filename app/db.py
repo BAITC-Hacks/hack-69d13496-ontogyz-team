@@ -69,13 +69,44 @@ def init_db() -> None:
             ("Здравоохранение", "Понять загруженность кабинетов", "В некоторых кабинетах бывают очереди.", "Нужно изучить распределение обращений", "Администраторы", "Данных пока нет."),
             ("Транспорт", "Упорядочить сообщения об остановках", "Пассажиры отправляют обращения в разных каналах.", "Нужен удобный учёт обращений", "Пассажиры и операторы", "Есть примеры обращений."),
         ]
+        # Synthetic examples cover all readiness levels without changing an
+        # existing database. They are acceptance scenarios, not measured results.
+        extra_fields = {
+            2: {
+                "expected_result": "Форма записи на консультацию и общий список свободных слотов.",
+                "constraints": "Использовать только обезличенное расписание; не собирать оценки студентов.",
+            },
+            3: {
+                "expected_result": "Реестр заявок со статусами: получена, назначена, выполнена.",
+                "success_criteria": "На 10 синтетических заявках диспетчер видит текущий статус каждой; закрытая заявка остаётся в истории.",
+                "contact": "Тестовый контакт диспетчера: demo@example.org (синтетический адрес).",
+                "interaction_format": "Демонстрационное условие: короткая консультация с диспетчером раз в неделю, вопросы к данным — в общем списке.",
+            },
+            5: {
+                "expected_result": "Единый список обращений с названием остановки, темой и статусом рассмотрения.",
+            },
+        }
+        team_profiles = [
+            (["анализ данных", "визуализация"], ["Python", "pandas"]),
+            (["UX", "веб-разработка"], ["JavaScript", "HTML", "CSS"]),
+            (["процессы", "API", "базы данных"], ["Python", "FastAPI", "SQLite"]),
+            (["исследование пользователей", "аналитика"], ["Python", "SQL"]),
+            (["интерфейсы", "работа с геоданными"], ["JavaScript", "SQL"]),
+        ]
         for i, (topic, title, context, need, users, data) in enumerate(examples, 1):
             card = dict.fromkeys(("title", "context", "need", "users", "data", "constraints", "expected_result", "success_criteria", "contact", "interaction_format"), "")
             card.update(title=title, context=context, need=need, users=users, data=data if i != 4 else "")
-            fields = ["context", "need", "users"] + (["data"] if card["data"] else [])
+            card.update(extra_fields.get(i, {}))
+            fields = [key for key, value in card.items() if key != "title" and value]
             db.execute("INSERT INTO tasks(topic,card,confirmed_fields,status,created_at) VALUES(?,?,?,?,?)", (topic, json.dumps(card, ensure_ascii=False), json.dumps(fields), "published", now()))
-            db.execute("INSERT INTO draft_examples(text,topic) VALUES(?,?)", (f"Нам нужно решить проблему: {need.lower()}.", topic))
-            db.execute("INSERT INTO teams(name,interests,skills,technologies) VALUES(?,?,?,?)", (f"Команда {i}", json.dumps([topic], ensure_ascii=False), json.dumps(["анализ", "разработка"], ensure_ascii=False), json.dumps(["Python", "JavaScript"])))
+            draft_text = f"Нам нужно решить проблему: {need.lower()}."
+            if i in (2, 3, 5):
+                draft_text = " ".join([context, need + ".", data, card["expected_result"]])
+            if i == 3:
+                draft_text += " " + card["success_criteria"] + " " + card["interaction_format"]
+            db.execute("INSERT INTO draft_examples(text,topic) VALUES(?,?)", (draft_text, topic))
+            skills, technologies = team_profiles[i - 1]
+            db.execute("INSERT INTO teams(name,interests,skills,technologies) VALUES(?,?,?,?)", (f"Команда {i}", json.dumps([topic], ensure_ascii=False), json.dumps(skills, ensure_ascii=False), json.dumps(technologies)))
             db.execute("INSERT INTO proposals(task_id,team_id,idea,plan,duration_days,prototype_url,created_at) VALUES(?,?,?,?,?,?,?)", (i, i, f"Исследовать проблему и сделать прототип для задачи {i}.", "Собрать требования, создать прототип и проверить его.", 14, f"https://example.org/prototype/{i}", now()))
 
 
