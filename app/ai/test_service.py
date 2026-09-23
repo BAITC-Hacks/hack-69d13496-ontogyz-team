@@ -261,6 +261,121 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
             card = await service.build_card("Не нужно создавать новый отчёт", "Ритейл", [])
         self.assertEqual(card["title"], "")
 
+    async def test_interaction_format_means_business_feedback_not_product_type(self):
+        raw = {"title": "Проверка", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["expected_result"] = ["s1"]
+        raw["interaction_format"] = ["s1", "s2"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(
+                "Нужно мобильное приложение. Менеджер отвечает на вопросы раз в неделю.",
+                "Ритейл", [])
+        self.assertEqual(card["expected_result"], "Нужно мобильное приложение.")
+        self.assertEqual(card["interaction_format"], "Менеджер отвечает на вопросы раз в неделю.")
+
+    async def test_data_rejects_future_collection_and_problem(self):
+        raw = {"title": "Проверка", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["data"] = ["s1", "s2", "s3"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(
+                "В магазине много списаний. Нужно собрать CSV. Есть журнал списаний за месяц.",
+                "Ритейл", [])
+        self.assertEqual(card["data"], "Есть журнал списаний за месяц.")
+
+    async def test_vague_goal_does_not_become_expected_product(self):
+        raw = {"title": "Запись", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"need": ["s1"], "expected_result": ["s1"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card("Хотим улучшить запись.", "Здравоохранение", [])
+        self.assertEqual(card["need"], "Хотим улучшить запись.")
+        self.assertEqual(card["expected_result"], "")
+
+    async def test_context_excludes_standalone_data_user_and_constraint(self):
+        draft = ("Склад распределяет заявки вручную. Есть CSV с заявками. "
+                 "Складские диспетчеры. Не менять кассовую систему.")
+        raw = {"title": "Склад", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"context": ["s1", "s2", "s3", "s4"], "data": ["s2"],
+                    "users": ["s3"], "constraints": ["s4"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(draft, "Логистика", [])
+        self.assertEqual(card["context"], "Склад распределяет заявки вручную.")
+        self.assertEqual(card["data"], "Есть CSV с заявками.")
+        self.assertEqual(card["users"], "Складские диспетчеры.")
+        self.assertEqual(card["constraints"], "Не менять кассовую систему.")
+
+    async def test_unknown_extra_data_and_decision_sentence_do_not_fill_fields(self):
+        draft = "Дополнительных данных пока нет. Финальное решение рекрутер принимает вручную."
+        raw = {"title": "HR", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"users": ["s1"], "constraints": ["s1"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(draft, "HR", [])
+        self.assertEqual(card["users"], "")
+        self.assertEqual(card["constraints"], "Финальное решение рекрутер принимает вручную.")
+
+    async def test_feedback_product_does_not_count_as_business_interaction(self):
+        raw = {"title": "Приложение", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["interaction_format"] = ["s1"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card("Нужно приложение обратной связи для клиентов.", "Ритейл", [])
+        self.assertEqual(card["interaction_format"], "")
+
+    async def test_business_feedback_is_not_a_contact(self):
+        raw = {"title": "Работа", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"interaction_format": ["s1"], "contact": ["s1"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(
+                "Менеджер даёт обратную связь команде раз в неделю.", "Ритейл", [])
+        self.assertEqual(card["interaction_format"], "Менеджер даёт обратную связь команде раз в неделю.")
+        self.assertEqual(card["contact"], "")
+
+    async def test_context_keeps_one_manual_decision_and_title_one_fact(self):
+        draft = ("Решение рекрутер принимает вручную. "
+                 "Решение рекрутера остаётся ручным. "
+                 "Нужен список кандидатов. Нужен отчёт о кандидатах.")
+        raw = {"title": "Другое", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"context": ["s1", "s2"], "expected_result": ["s3", "s4"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(draft, "HR", [])
+        self.assertEqual(card["context"], "Решение рекрутер принимает вручную.")
+        self.assertEqual(card["expected_result"], "Нужен список кандидатов. Нужен отчёт о кандидатах.")
+        self.assertEqual(card["title"], "Нужен список кандидатов.")
+
+    async def test_question_prompt_targets_missing_result_data_and_success(self):
+        with patch.object(service, "_model_json", AsyncMock(return_value=VALID_QUESTIONS)) as model:
+            await service.generate_questions(
+                "Есть CSV со списаниями. Нужен отчёт о причинах списаний.", "Ритейл")
+        instruction = model.call_args.args[0]
+        self.assertIn("не переспрашивай уже указанные", instruction)
+        self.assertIn("каким наблюдаемым способом бизнес проверит успех", instruction)
+        self.assertIn("веб- или мобильное приложение", instruction)
+
+    async def test_named_prototype_is_not_asked_as_if_product_unknown(self):
+        value = {"questions": [dict(item) for item in VALID_QUESTIONS["questions"]]}
+        value["questions"][0] = {"id": "q1", "field": "need", "text": "Какой конкретный продукт вы хотите получить?"}
+        with patch.object(service, "_model_json", AsyncMock(return_value=value)):
+            questions = await service.generate_questions(
+                "Бизнесу нужен прототип сервиса записи к врачу.", "Здравоохранение")
+        self.assertEqual(questions[0]["field"], "expected_result")
+        self.assertIn("действия", questions[0]["text"])
+
+    async def test_prototype_result_is_not_asked_twice(self):
+        value = {"questions": [dict(item) for item in VALID_QUESTIONS["questions"]]}
+        value["questions"][0] = {"id": "q1", "field": "need", "text": "Какой результат от прототипа вы хотите?"}
+        value["questions"][1] = {"id": "q2", "field": "expected_result", "text": "Какие действия должен поддерживать прототип?"}
+        with patch.object(service, "_model_json", AsyncMock(return_value=value)):
+            questions = await service.generate_questions("Нужен прототип сервиса записи.", "Здравоохранение")
+        self.assertEqual(questions[0]["field"], "users")
+        self.assertIn("пользоваться", questions[0]["text"])
+
+    async def test_conflicting_automation_gets_clarifying_question(self):
+        value = {"questions": [dict(item) for item in VALID_QUESTIONS["questions"]]}
+        value["questions"][2] = {"id": "q3", "field": "constraints", "text": "Есть ли другие ограничения?"}
+        with patch.object(service, "_model_json", AsyncMock(return_value=value)):
+            questions = await service.generate_questions(
+                "Хотим автоматизировать отбор, но финальное решение вручную. "
+                "Нельзя менять текущий процесс в этом году.", "HR")
+        self.assertIn("совместить", questions[2]["text"])
+        self.assertIn("ручным", questions[2]["text"])
+
     async def test_retail_user_is_not_contact_and_result_has_no_addition(self):
         answers = [
             {"question_id": "q1", "answer": "Точная величина пока неизвестна."},
