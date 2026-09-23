@@ -41,6 +41,7 @@ async function action(button, fn) {
   const label = button.textContent;
   button.disabled = true;
   button.setAttribute("aria-busy", "true");
+  button.textContent = "Подождите…";
   try { await fn(); } catch (error) { message(error.message, true); }
   finally { button.disabled = false; button.removeAttribute("aria-busy"); button.textContent = label; }
 }
@@ -235,7 +236,7 @@ async function loadBusiness() {
     await loadProposals();
   } catch (error) { message(error.message, true); }
 }
-async function loadProposals() {
+async function loadProposals(successMessage = "") {
   const list = $("proposal-list"), taskId = $("business-task").value;
   list.replaceChildren();
   if (!taskId) { list.append(el("p", "Сначала опубликуйте задачу.")); message("Опубликованных задач пока нет."); return; }
@@ -252,7 +253,7 @@ async function loadProposals() {
         const button = el("button", title, status === "selected" ? "primary" : "secondary");
         button.addEventListener("click", () => action(button, async () => {
           await api(`/api/proposals/${p.id}`, "PATCH", {status});
-          message("Решение сохранено вручную."); await loadProposals();
+          await loadProposals("Решение сохранено вручную. Остальные отклики не изменены.");
         })); actions.append(button);
       }
       if (p.status === "selected") {
@@ -260,13 +261,13 @@ async function loadProposals() {
         button.disabled = p.milestone_confirmed;
         button.addEventListener("click", () => action(button, async () => {
           await api(`/api/proposals/${p.id}/milestones/confirm`, "POST", {});
-          message("Этап подтверждён, команда получила 10 баллов."); await loadProposals();
+          await loadProposals("Этап подтверждён: за этот этап начислено 10 баллов однократно.");
         })); actions.append(button);
       }
       article.append(actions); list.append(article);
     }
-    message(`Отклики загружены: ${proposals.length}. Каждое решение принимается независимо.`);
+    message(successMessage || `Отклики загружены: ${proposals.length}. Каждое решение принимается независимо.`);
   } catch (error) { message(error.message, true); }
 }
-$("business-task").addEventListener("change", loadProposals);
+$("business-task").addEventListener("change", () => loadProposals());
 view("create");
