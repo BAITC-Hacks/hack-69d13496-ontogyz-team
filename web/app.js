@@ -24,6 +24,12 @@ function el(tag, text, className) {
 function setStage(number, text) {
   $("stage-number").textContent = number;
   $("stage-text").textContent = text;
+  const current = Number.parseInt(number, 10) || 3;
+  document.querySelectorAll(".step-track li").forEach((step, index) => {
+    step.classList.toggle("done", index + 1 < current);
+    if (index + 1 === current) step.setAttribute("aria-current", "step");
+    else step.removeAttribute("aria-current");
+  });
 }
 function message(text, error = false) {
   $("notice").textContent = text;
@@ -154,6 +160,7 @@ function showScore(task) {
     });
     item.append(button); return item;
   }));
+  if (!task.missing_fields.length) $("missing").append(el("li", "Все поля рейтинга заполнены и подтверждены.", "hint"));
 }
 function focusField(field) {
   const input = $(`field-${field}`);
@@ -333,19 +340,25 @@ async function loadTasks(refreshTopics = false) {
       filter.value = state.topics.includes(chosen) ? chosen : "";
     }
     renderTasks();
-    message(`Каталог загружен: ${data.tasks.length} задач. Сортировка — по рейтингу.`);
+    message(`Найдено задач: ${data.tasks.length}. Сортировка — по рейтингу.`);
   } catch (error) { message(error.message, true); }
 }
 function renderTasks() {
   const list = $("task-list"); list.replaceChildren();
-  if (!state.tasks.length) { list.append(el("p", "Задач с такими параметрами пока нет.")); return; }
+  $("catalog-count").textContent = String(state.tasks.length);
+  if (!state.tasks.length) { list.append(el("p", "Задач с такими параметрами пока нет. Попробуйте другую тему или готовность.", "empty-state")); return; }
   for (const task of state.tasks) {
-    const box = el("article", null, "task-card"), chips = el("div", null, "chips");
+    const box = el("article", null, "task-card"), top = el("div", null, "task-card-top");
     box.classList.add(`level-${task.level}`);
-    chips.append(el("span", task.topic, "chip"), el("span", `Готовность: ${task.score}/100 · ${LEVELS[task.level]}`, `chip level-chip level-${task.level}`));
+    const rating = el("div", null, "task-rating");
+    rating.setAttribute("aria-label", `Готовность: ${task.score} из 100`);
+    rating.append(el("strong", task.score), el("span", "/ 100"));
+    top.append(el("span", task.topic, "chip"), rating);
     const open = el("button", "Посмотреть и откликнуться", "secondary");
     open.addEventListener("click", () => openTask(task.id));
-    box.append(chips, el("h2", task.card.title), el("p", task.card.need || task.card.context || "Описание ещё уточняется"), open);
+    const footer = el("div", null, "task-card-footer");
+    footer.append(el("span", `Готовность: ${LEVELS[task.level].toLowerCase()}`, `level-label level-${task.level}`), open);
+    box.append(top, el("h2", task.card.title), el("p", task.card.need || task.card.context || "Описание ещё уточняется"), footer);
     list.append(box);
   }
 }
