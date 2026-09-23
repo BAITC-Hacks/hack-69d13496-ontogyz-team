@@ -239,11 +239,18 @@ async def generate_questions(draft: str, topic: str) -> list[dict[str, str]]:
         "о пользователях. interaction_format — порядок консультаций и обратной связи "
         "бизнеса с командой, например 'менеджер отвечает на вопросы раз в неделю'; "
         "веб- или мобильное приложение — формат продукта, не формат такого взаимодействия. "
-        "Если в черновике есть противоречивые требования, спроси, как бизнес их согласует, "
-        "не разрешая противоречие самостоятельно. Не называй автоматизацией изменение, которое "
+        "Если в черновике есть противоречивые требования, обязательно выдели один из 3–5 вопросов "
+        "на их согласование с field=constraints, прежде общего вопроса о пользователях. "
+        "Например, требование изменить процесс при явном запрете его менять требует уточнения. "
+        "Упоминай в таком вопросе только требования из данного черновика. Спроси, как бизнес их согласует, "
+        "не разрешая противоречие самостоятельно. Ручная работа сейчас и желаемая автоматизация "
+        "в будущем сами по себе не противоречат друг другу. Не приписывай бизнесу запрет менять "
+        "процесс, ручное финальное решение или отбор кандидатов, если этого нет в черновике. "
+        "Не называй автоматизацией изменение, которое "
         "бизнес ещё не просил автоматизировать. Не переспрашивай уже названный Excel, поля данных, "
         "порог времени или ограничение смены: уточняй лишь действительно отсутствующее. "
         "Выбирай field по тому, какое поле заполнит ответ, а не по случайным словам вопроса. "
+        "Вопрос о конкретном продукте или результате помечай expected_result; need — о проблеме бизнеса. "
         "Не придумывай факты, сроки и метрики; спрашивай о них без вариантов, выдаваемых за факты. "
         "Ответ строго по JSON-схеме.",
         {"draft": clean_draft, "topic": topic}, QUESTION_SCHEMA, "task_questions")
@@ -260,8 +267,7 @@ async def generate_questions(draft: str, topic: str) -> list[dict[str, str]]:
     normalized_texts = {" ".join(q["text"].split()).casefold() for q in questions}
     if len({q["id"] for q in questions}) != len(questions) or len(normalized_texts) != len(questions):
         raise AIServiceError("AI_INVALID_OUTPUT", "AI повторил вопрос")
-    # Fix two observable misses without adding new claims: ask for the missing
-    # behavior of a named prototype and clarify explicitly conflicting demands.
+    # Ask for the missing behavior of a named prototype.
     draft_lower = clean_draft.casefold()
     if "прототип" in draft_lower:
         for question in questions:
@@ -277,13 +283,6 @@ async def generate_questions(draft: str, topic: str) -> list[dict[str, str]]:
             if repeated is not None:
                 repeated["field"] = "users"
                 repeated["text"] = "Кто будет пользоваться уже запрошенным прототипом?"
-    if ("автоматиз" in draft_lower and "вручн" in draft_lower and
-            not any("совмест" in q["text"].casefold() or "противореч" in q["text"].casefold()
-                    for q in questions)):
-        question = next((q for q in questions if q["field"] == "constraints"), None)
-        if question is not None:
-            question["text"] = ("Как совместить автоматический отбор с ручным финальным решением "
-                                "и запретом менять текущий процесс?")
     return questions
 
 

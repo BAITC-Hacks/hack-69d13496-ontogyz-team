@@ -368,13 +368,41 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_conflicting_automation_gets_clarifying_question(self):
         value = {"questions": [dict(item) for item in VALID_QUESTIONS["questions"]]}
-        value["questions"][2] = {"id": "q3", "field": "constraints", "text": "Есть ли другие ограничения?"}
+        value["questions"][2] = {
+            "id": "q3", "field": "constraints",
+            "text": "Как совместить автоматизацию с ручным решением и запретом менять процесс?",
+        }
         with patch.object(service, "_model_json", AsyncMock(return_value=value)):
             questions = await service.generate_questions(
                 "Хотим автоматизировать отбор, но финальное решение вручную. "
                 "Нельзя менять текущий процесс в этом году.", "HR")
         self.assertIn("совместить", questions[2]["text"])
         self.assertIn("ручным", questions[2]["text"])
+
+    async def test_automation_question_does_not_invent_process_change_ban(self):
+        value = {"questions": [dict(item) for item in VALID_QUESTIONS["questions"]]}
+        value["questions"][2] = {
+            "id": "q3", "field": "constraints", "text": "Есть ли ограничения на автоматизацию?",
+        }
+        with patch.object(service, "_model_json", AsyncMock(return_value=value)):
+            questions = await service.generate_questions(
+                "Хотим автоматизировать отбор кандидатов. Финальное решение принимаем вручную.", "HR")
+        self.assertEqual(questions[2]["text"], "Есть ли ограничения на автоматизацию?")
+        self.assertNotIn("запрет", " ".join(q["text"] for q in questions))
+
+    async def test_manual_retail_process_does_not_invent_hiring_or_conflict(self):
+        value = {"questions": [dict(item) for item in VALID_QUESTIONS["questions"]]}
+        value["questions"][2] = {
+            "id": "q3", "field": "constraints", "text": "Какие ограничения нужно учесть?",
+        }
+        with patch.object(service, "_model_json", AsyncMock(return_value=value)):
+            questions = await service.generate_questions(
+                "Сейчас отчёт о списаниях формируем вручную. Хотим автоматизировать его подготовку.",
+                "Ритейл")
+        self.assertEqual(questions[2]["text"], "Какие ограничения нужно учесть?")
+        text = " ".join(q["text"] for q in questions)
+        for invented in ("отбор", "финальным решением", "запрет", "противореч"):
+            self.assertNotIn(invented, text)
 
     async def test_retail_user_is_not_contact_and_result_has_no_addition(self):
         answers = [
