@@ -14,6 +14,19 @@ from app.main import app
 
 CASES = [
     {
+        "id": "mixed_unknown_report",
+        "topic": "Ритейл",
+        "draft": "В магазине много списаний. Хотим сократить их.",
+        "answers": {},
+        "fixed_answers": [
+            {"question_id": "q1", "answer": "Бюджет не согласован, но нужен отчёт о списаниях."},
+            {"question_id": "q2", "answer": "Управляющий магазином."},
+            {"question_id": "q3", "answer": "Данные пока не сообщены."},
+            {"question_id": "q4", "answer": "Ограничения пока не согласованы."},
+            {"question_id": "q5", "answer": "Критерий успеха пока не определён."},
+        ],
+    },
+    {
         "id": "retail_regression",
         "topic": "Ритейл",
         "draft": "В магазине много списаний продуктов. Хотим сократить их.",

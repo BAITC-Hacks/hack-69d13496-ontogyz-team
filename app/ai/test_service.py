@@ -99,6 +99,32 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(segments, [{"id": "s1", "text": "Пациенты долго ждут."}])
 
+    def test_mixed_unknown_clause_keeps_requested_report(self):
+        segments = service._source_segments(
+            "Бюджет не согласован, но нужен отчёт о списаниях.", [])
+        self.assertEqual(segments, [{"id": "s1", "text": "нужен отчёт о списаниях."}])
+
+    async def test_explicit_report_moves_from_need_to_expected_result(self):
+        raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"need": ["s2", "s3"], "expected_result": ["s2"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(
+                "В магазине много списаний. Хотим сократить их.", "Ритейл",
+                [{"question_id": "q1", "answer": "Бюджет не согласован, но нужен отчёт о списаниях."}],
+            )
+        self.assertEqual(card["need"], "Хотим сократить их.")
+        self.assertEqual(card["expected_result"], "нужен отчёт о списаниях.")
+        self.assertEqual(card["data"], "")
+        self.assertEqual(card["constraints"], "")
+
+    async def test_non_string_source_id_returns_safe_invalid_output(self):
+        raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["context"] = [{}]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            with self.assertRaises(service.AIServiceError) as caught:
+                await service.build_card("В магазине есть списания.", "Ритейл", [])
+        self.assertEqual(caught.exception.code, "AI_INVALID_OUTPUT")
+
     async def test_retail_user_is_not_contact_and_result_has_no_addition(self):
         answers = [
             {"question_id": "q1", "answer": "Точная величина пока неизвестна."},
@@ -279,6 +305,24 @@ class TimeoutRouteTests(unittest.TestCase):
         self.assertEqual(client_mock.chat.completions.create.await_count, 2)
         self.assertEqual(response.status_code, 504)
         self.assertEqual(response.json()["error"]["code"], "AI_TIMEOUT")
+
+    def test_non_string_card_source_maps_to_http_502(self):
+        raw = {"title": "Списания", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["context"] = [{}]
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"DATABASE_PATH": str(Path(directory) / "test.db")}):
+                with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+                    with TestClient(app) as client:
+                        response = client.post(
+                            "/api/ai/card",
+                            json={
+                                "draft": "В магазине есть списания.",
+                                "topic": "Ритейл",
+                                "answers": [],
+                            },
+                        )
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["error"]["code"], "AI_INVALID_OUTPUT")
 
 
 if __name__ == "__main__":

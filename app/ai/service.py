@@ -15,6 +15,10 @@ UNKNOWN_MARKERS = ("не зна", "неизвест", "не определ", "н
                    "нет данных", "подробностей пока нет")
 CONTACT_MARKERS = ("контакт", "связ", "телефон", "email", "e-mail", "электронн", "почт",
                    "telegram", "телеграм", "whatsapp", "ватсап", "@")
+RESULT_OBJECT_MARKERS = ("отчёт", "отчет", "список", "форма записи", "прототип", "дашборд",
+                         "рекомендац", "маршрут")
+RESULT_INTENT_MARKERS = ("нужен", "нужна", "нужно", "нужны", "требуется", "получить", "подготов",
+                         "создать", "должен", "должны")
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -54,7 +58,8 @@ def _source_segments(draft: str, answers: list[dict[str, str]]) -> list[dict[str
     texts = [draft] + [answer.get("answer", "") for answer in answers if isinstance(answer, dict)]
     segments = []
     for text in texts:
-        for value in re.split(r"(?<=[.!?])\s+|;\s*", text):
+        for value in re.split(r"(?<=[.!?])\s+|;\s*|,\s*(?:но|однако)\s+|\s+при этом\s+", text,
+                              flags=re.IGNORECASE):
             value = value.strip()
             if value and not any(marker in value.casefold() for marker in UNKNOWN_MARKERS):
                 segments.append({"id": f"s{len(segments) + 1}", "text": value})
@@ -67,6 +72,16 @@ def _allowed_source_ids(field: str, sources: list[dict[str, str]]) -> list[str]:
     return [source["id"] for source in sources if
             any(marker in source["text"].casefold() for marker in CONTACT_MARKERS) or
             re.search(r"(?:\+?\d[\d\s()\-]{6,}\d)", source["text"])]
+
+
+def _result_source_ids(sources: list[dict[str, str]]) -> list[str]:
+    result = []
+    for source in sources:
+        text = source["text"].casefold()
+        if (any(marker in text for marker in RESULT_OBJECT_MARKERS) and
+                any(marker in text for marker in RESULT_INTENT_MARKERS)):
+            result.append(source["id"])
+    return result
 
 
 def _card_schema(source_ids: list[str]) -> dict:
@@ -154,6 +169,7 @@ async def build_card(draft: str, topic: str, answers: list[dict[str, str]]) -> d
     sources = _source_segments(draft, answers)
     source_by_id = {source["id"]: source["text"] for source in sources}
     allowed_ids = {field: _allowed_source_ids(field, sources) for field in SOURCE_FIELDS}
+    result_ids = _result_source_ids(sources)
     raw = await _model_json(
         "Ты редактор карточки бизнес-задачи AI Sana. Получишь JSON с темой и нумерованными "
         "фрагментами пользовательского текста. Для каждого поля, кроме title, верни массив ID "
@@ -177,10 +193,16 @@ async def build_card(draft: str, topic: str, answers: list[dict[str, str]]) -> d
     for field in SOURCE_FIELDS:
         source_ids = raw[field]
         if (not isinstance(source_ids, list) or
-                len(set(source_ids)) != len(source_ids) or
                 any(not isinstance(source_id, str) or source_id not in source_by_id
                     for source_id in source_ids)):
             raise AIServiceError("AI_INVALID_OUTPUT", "AI добавил сведения без источника")
+        if len(set(source_ids)) != len(source_ids):
+            raise AIServiceError("AI_INVALID_OUTPUT", "AI добавил сведения без источника")
+        if result_ids:
+            if field == "expected_result":
+                source_ids = result_ids
+            else:
+                source_ids = [source_id for source_id in source_ids if source_id not in result_ids]
         if field == "contact":
             source_ids = [source_id for source_id in source_ids if source_id in allowed_ids[field]]
         value = " ".join(source_by_id[source_id] for source_id in source_ids)
