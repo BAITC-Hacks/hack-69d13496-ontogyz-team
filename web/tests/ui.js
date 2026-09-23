@@ -29,7 +29,9 @@
         saved={...payload,id:91,status:"draft",score:Object.values(breakdown).reduce((a,b)=>a+b,0),level:"draft",score_breakdown:breakdown,missing_fields:Object.keys(breakdown).filter(k=>!breakdown[k])};
         body=saved;
       }
-    } else if (path.endsWith("/proposals")) body={proposals:[{id:1,team_id:1,idea:path.includes('/1/')?'СТАРАЯ ЗАДАЧА':'НОВАЯ ЗАДАЧА',plan:'План проверки',duration_days:14,points:0,status:'pending',prototype_url:'https://example.org/test'}]};
+    } else if (path === "/api/business/tasks") body={tasks:saved?[saved]:[]};
+    else if (path === "/api/tasks/91" && method === "GET") body=saved;
+    else if (path.endsWith("/proposals")) body={proposals:[{id:1,team_id:1,idea:path.includes('/1/')?'СТАРАЯ ЗАДАЧА':'НОВАЯ ЗАДАЧА',plan:'План проверки',duration_days:14,points:0,status:'pending',prototype_url:'https://example.org/test'}]};
     else if (path === "/api/tasks") body={tasks:testRace?[{id:1,card,score:30},{id:2,card,score:30}]:[]};
     else if (path === "/api/teams") body={teams:[]};
     else throw new Error(`Unexpected test request: ${method} ${path}`);
@@ -79,6 +81,19 @@
   }
   byId("save").click(); await idle();
   check(byId("score").textContent==="100" && byId("score-note").textContent.includes("не проверка достоверности"),"При 100/100 показано ограничение рейтинга");
+  byId("field-title").value="Несохранённая правка";
+  byId("field-title").dispatchEvent(new win.Event("input"));
+  win.confirm=()=>false;
+  byId("business-task-list").querySelector("button").click(); await idle();
+  check(byId("field-title").value==="Несохранённая правка" && !byId("unsaved").hidden,"Отмена переключения сохраняет несохранённый текст");
+  win.confirm=()=>true;
+  byId("business-task-list").querySelector("button").click(); await idle();
+  byId("field-title").value="После продолжения";
+  byId("field-title").dispatchEvent(new win.Event("input"));
+  byId("save").click(); await idle();
+  check(byId("task-state").textContent.includes("№91") && requests.at(-1).path==="/api/tasks/91" && requests.at(-1).method==="PUT","Продолжение восстанавливает ID и сохраняет через PUT");
+  byId("generate").click(); await idle();
+  check(byId("score").textContent==="0" && byId("task-state").textContent==="Не сохранено","Новая AI-карточка сбрасывает старые рейтинг и статус");
   testRace=true;
   doc.querySelector('[data-view="business"]').click();
   await new Promise(resolve=>setTimeout(resolve,200));

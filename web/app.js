@@ -8,7 +8,7 @@ const FIELDS = {
 };
 const LEVELS = {draft: "Черновик", working: "Рабочая", ready: "Готовая", priority: "Приоритетная"};
 const $ = id => document.getElementById(id);
-const state = {questions: [], card: null, taskId: null, tasks: [], teams: [], topics: []};
+const state = {questions: [], card: null, taskId: null, tasks: [], businessTasks: [], teams: [], topics: [], dirty: false};
 
 function el(tag, text, className) {
   const node = document.createElement(tag);
@@ -20,16 +20,17 @@ function message(text, error = false) {
   $("notice").textContent = text;
   $("notice").classList.toggle("error", error);
   $("notice").setAttribute("role", error ? "alert" : "status");
-  if (text) window.scrollTo({top: 0, behavior: "smooth"});
 }
 function markDirty() {
   if ($("editor").hidden) return;
+  state.dirty = true;
   $("unsaved").hidden = false;
   $("unsaved").textContent = state.taskId
     ? "Есть несохранённые изменения. Рейтинг относится к последней сохранённой версии."
     : "Есть несохранённые изменения. Рейтинг появится после первого сохранения.";
 }
 function markSaved() {
+  state.dirty = false;
   $("unsaved").hidden = true;
   $("unsaved").textContent = "";
 }
@@ -71,6 +72,7 @@ function view(name) {
     if (button.dataset.role) button.setAttribute("aria-pressed", String(button.dataset.role === role));
   }
   message("");
+  if (name === "create") loadBusinessTasks(true);
   if (name === "catalog") loadTasks(true);
   if (name === "business") loadBusiness();
 }
@@ -85,13 +87,19 @@ function showScore(task) {
   $("score-note").textContent = task.score === 100
     ? "Заполнены и подтверждены все поля. 100/100 — это оценка заполненности, а не проверка достоверности сведений."
     : "";
-  $("task-state").textContent = task.status === "published" ? "Опубликовано" : "Не опубликовано";
+  $("task-state").textContent = `${task.status === "published" ? "Опубликовано" : "Не опубликовано"}${task.id ? ` · задача №${task.id}` : ""}`;
   $("breakdown").replaceChildren(...Object.entries(task.score_breakdown).map(([field, points]) => {
     const item = el("li", `${FIELDS[field]}: ${points}`);
     if (points > 0) item.classList.add("earned");
     return item;
   }));
   $("missing").replaceChildren(...task.missing_fields.map(field => el("li", `${FIELDS[field]} (+${({context:10,need:10,data:20,expected_result:15,success_criteria:15,constraints:10,users:10,contact:5,interaction_format:5})[field]})`)));
+}
+function resetScore() {
+  const score_breakdown = Object.fromEntries(Object.keys(FIELDS).filter(key => key !== "title").map(key => [key, 0]));
+  showScore({id: null, score: 0, level: "draft", status: "draft", score_breakdown, missing_fields: Object.keys(score_breakdown)});
+  $("level").textContent = "Новая карточка · ещё не сохранена";
+  $("task-state").textContent = "Не сохранено";
 }
 $("ask").addEventListener("click", event => action(event.currentTarget, async () => {
   const draft = $("draft").value.trim(), topic = $("topic").value.trim();
@@ -110,7 +118,7 @@ $("ask").addEventListener("click", event => action(event.currentTarget, async ()
   message("Ответьте на вопросы и проверьте карточку перед публикацией.");
 }));
 
-function renderEditor(card) {
+function renderEditor(card, confirmedFields = [], dirty = true) {
   const target = $("card-fields"); target.replaceChildren();
   for (const [key, title] of Object.entries(FIELDS)) {
     const area = el("div");
@@ -130,20 +138,23 @@ function renderEditor(card) {
     if (key !== "title") {
       const confirm = el("label", "Подтверждаю эти сведения", "check");
       const checkbox = el("input"); checkbox.type = "checkbox"; checkbox.id = `confirm-${key}`;
+      checkbox.checked = confirmedFields.includes(key);
       checkbox.addEventListener("change", markDirty);
       confirm.prepend(checkbox); area.append(confirm);
     }
     target.append(area);
   }
   $("editor").hidden = false;
-  markDirty();
+  if (dirty) markDirty(); else markSaved();
   $("editor").scrollIntoView({behavior: "smooth"});
 }
 $("generate").addEventListener("click", event => action(event.currentTarget, async () => {
+  if (state.dirty && !window.confirm("Есть несохранённые изменения. Создать новую карточку и отбросить их?")) return;
   const answers = state.questions.map(q => ({question_id: q.id, answer: $(`answer-${q.id}`).value.trim()}));
   message("AI готовит редактируемый черновик...");
   const data = await api("/api/ai/card", "POST", {draft: $("draft").value.trim(), topic: $("topic").value.trim(), answers}, 50000);
   state.card = data.card; state.taskId = null;
+  resetScore();
   renderEditor(data.card);
   message("Проверьте карточку: AI может ошибаться. Подтвердите только известные вам сведения.");
 }));
@@ -162,7 +173,7 @@ async function saveCard() {
   const task = state.taskId
     ? await api(`/api/tasks/${state.taskId}`, "PUT", payload)
     : await api("/api/tasks", "POST", payload);
-  state.taskId = task.id; state.card = task.card; showScore(task);
+  state.taskId = task.id; state.card = task.card; showScore(task); upsertBusinessTask(task);
   markSaved();
   message(`Карточка сохранена. Рейтинг ${task.score}/100 (${LEVELS[task.level].toLowerCase()}).`);
   return task;
@@ -171,9 +182,45 @@ $("save").addEventListener("click", event => action(event.currentTarget, saveCar
 $("publish").addEventListener("click", event => action(event.currentTarget, async () => {
   await saveCard();
   const task = await api(`/api/tasks/${state.taskId}/publish`, "POST", {});
-  showScore(task);
+  showScore(task); upsertBusinessTask(task);
   message(`Задача «${task.card.title}» опубликована. Она доступна всем командам, рейтинг ${task.score}/100.`);
 }));
+
+function renderBusinessTasks() {
+  const list = $("business-task-list"); list.replaceChildren();
+  if (!state.businessTasks.length) { list.append(el("p", "Сохранённых задач пока нет.")); return; }
+  for (const task of state.businessTasks) {
+    const item = el("article", null, "saved-task"), text = el("div"), button = el("button", "Продолжить редактирование", "secondary");
+    text.append(el("strong", task.card.title || "Без названия"), el("span", `${task.topic} · ${task.score}/100 · ${task.status === "published" ? "Опубликовано" : "Черновик"}`));
+    button.type = "button";
+    button.addEventListener("click", () => action(button, () => openSavedTask(task.id)));
+    item.append(text, button); list.append(item);
+  }
+}
+function upsertBusinessTask(task) {
+  state.businessTasks = [task, ...state.businessTasks.filter(saved => saved.id !== task.id)].sort((a, b) => b.id - a.id);
+  renderBusinessTasks();
+}
+async function loadBusinessTasks(quiet = false) {
+  try {
+    if (!quiet) message("Загружаем сохранённые задачи...");
+    const data = await api("/api/business/tasks"); state.businessTasks = data.tasks;
+    renderBusinessTasks();
+    if (!quiet) message(`Сохранённые задачи загружены: ${data.tasks.length}.`);
+  } catch (error) { message(error.message, true); }
+}
+async function openSavedTask(id) {
+  if (state.dirty && !window.confirm("Есть несохранённые изменения. Переключиться на другую задачу и отбросить их?")) return;
+  message("Открываем сохранённую задачу...");
+  const task = await api(`/api/tasks/${id}`);
+  state.taskId = task.id; state.card = task.card;
+  $("topic").value = task.topic;
+  renderEditor(task.card, task.confirmed_fields, false);
+  showScore(task);
+  message(`Задача №${task.id} открыта. Следующее сохранение обновит её без создания копии.`);
+  $("editor").scrollIntoView({behavior: "smooth", block: "start"});
+}
+$("refresh-business-tasks").addEventListener("click", event => action(event.currentTarget, () => loadBusinessTasks()));
 
 async function loadTasks(refreshTopics = false) {
   try {
