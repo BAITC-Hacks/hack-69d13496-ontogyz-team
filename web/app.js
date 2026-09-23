@@ -8,7 +8,7 @@ const FIELDS = {
 };
 const LEVELS = {draft: "Черновик", working: "Рабочая", ready: "Готовая", priority: "Приоритетная"};
 const $ = id => document.getElementById(id);
-const state = {questions: [], card: null, taskId: null, tasks: [], businessTasks: [], teams: [], topics: [], dirty: false};
+const state = {questions: [], card: null, taskId: null, tasks: [], businessTasks: [], teams: [], topics: [], dirty: false, sourceDirty: false, busy: false};
 
 function el(tag, text, className) {
   const node = document.createElement(tag);
@@ -55,8 +55,12 @@ async function api(path, method = "GET", body = null, timeout = 12000) {
 }
 async function action(button, fn) {
   if (button.disabled) return;
-  const scope = button.closest("#create, form, article") || button;
-  const controls = scope === button ? [button] : [...scope.querySelectorAll("button")];
+  const editorScope = button.closest("#create");
+  const scope = editorScope || button.closest("form, article") || button;
+  const editing = Boolean(editorScope);
+  if (editing && state.busy) return;
+  if (editing) state.busy = true;
+  const controls = scope === button ? [button] : [...scope.querySelectorAll("button, input, textarea, select")];
   const disabledBefore = controls.map(control => control.disabled);
   const label = button.textContent;
   controls.forEach(control => { control.disabled = true; });
@@ -64,15 +68,16 @@ async function action(button, fn) {
   button.textContent = "Подождите…";
   try { await fn(); } catch (error) { message(error.message, true); }
   finally {
+    if (editing) state.busy = false;
     controls.forEach((control, index) => { control.disabled = disabledBefore[index]; });
     button.removeAttribute("aria-busy"); button.textContent = label;
   }
 }
 function view(name) {
   for (const section of document.querySelectorAll(".view")) section.hidden = section.id !== name;
-  const role = name === "catalog" ? "team" : "business";
+  const role = name === "about" ? null : name === "catalog" ? "team" : "business";
   for (const button of document.querySelectorAll("nav button")) {
-    button.classList.toggle("selected", button.dataset.view === name || (name === "business" && button.dataset.view === "create"));
+    button.classList.toggle("selected", button.dataset.view === name);
     if (button.dataset.role) button.setAttribute("aria-pressed", String(button.dataset.role === role));
   }
   message("");
@@ -81,8 +86,43 @@ function view(name) {
   if (name === "business") loadBusiness();
 }
 for (const button of document.querySelectorAll("nav button")) button.addEventListener("click", () => view(button.dataset.view));
+$("about-link").addEventListener("click", event => {
+  event.preventDefault(); view("about"); reveal($("about").querySelector("h1"));
+});
+function reveal(node) {
+  node.setAttribute("tabindex", "-1");
+  node.focus({preventScroll:true});
+  node.scrollIntoView({block:"start", behavior:"auto"});
+}
+function canReplaceWork() {
+  return !(state.dirty || state.sourceDirty) || window.confirm("Есть несохранённые изменения. Продолжить и отбросить их?");
+}
+function clearSource() {
+  state.questions = []; state.sourceDirty = false;
+  $("draft").value = "";
+  $("question-list").replaceChildren();
+  $("questions").hidden = true;
+}
+$("new-task").addEventListener("click", () => {
+  if (state.busy || !canReplaceWork()) return;
+  clearSource(); state.taskId = null; state.card = null;
+  $("topic-home").append($("topic-control")); $("topic").value = "Ритейл";
+  $("editor").hidden = true; $("card-fields").replaceChildren();
+  $("source").hidden = false; $("source").open = true;
+  $("saved-tasks").open = false;
+  resetScore(); markSaved(); setStage("01 / 03", "Описать задачу");
+  message(""); $("draft").focus();
+});
 
 function showScore(task) {
+  $("editor-kind").textContent = task.id
+    ? (task.status === "published" ? "Опубликованная задача" : "Сохранённый черновик")
+    : "Новая карточка от AI";
+  $("editor-title").textContent = task.id ? "Редактирование задачи" : "Проверьте карточку";
+  $("publish").hidden = task.status === "published";
+  $("publication-hint").textContent = task.status === "published"
+    ? "Сохранённые изменения появятся в опубликованной задаче."
+    : "Публикация доступна при любом рейтинге.";
   $("score").textContent = task.score;
   $("score-fill").style.width = `${task.score}%`;
   $("score-fill").parentElement.setAttribute("aria-valuenow", String(task.score));
@@ -102,7 +142,7 @@ function showScore(task) {
     button.type = "button";
     button.addEventListener("click", () => {
       const input = $(`field-${field}`);
-      if (input) { input.scrollIntoView({behavior: "smooth", block: "center"}); input.focus(); }
+      if (input) { input.focus({preventScroll:true}); input.scrollIntoView({behavior: "auto", block: "center"}); }
     });
     item.append(button); return item;
   }));
@@ -129,6 +169,7 @@ $("ask").addEventListener("click", event => action(event.currentTarget, async ()
   $("questions").hidden = false;
   setStage("02 / 03", "Ответить на вопросы");
   message("Вопросы готовы. Ответьте на известные вам факты.");
+  reveal($("questions").querySelector("h2"));
 }));
 
 function renderEditor(card, confirmedFields = [], dirty = true) {
@@ -158,8 +199,14 @@ function renderEditor(card, confirmedFields = [], dirty = true) {
     target.append(area);
   }
   $("editor").hidden = false;
+  $("editor-topic").append($("topic-control"));
+  if (window.matchMedia("(max-width: 680px)").matches) {
+    for (const details of document.querySelectorAll(".score-details")) details.open = false;
+  }
+  $("source").open = false;
+  $("saved-tasks").open = false;
   if (dirty) markDirty(); else markSaved();
-  $("editor").scrollIntoView({behavior: "smooth"});
+  reveal($("editor-title"));
 }
 $("generate").addEventListener("click", event => action(event.currentTarget, async () => {
   if (state.dirty && !window.confirm("Есть несохранённые изменения. Создать новую карточку и отбросить их?")) return;
@@ -167,6 +214,7 @@ $("generate").addEventListener("click", event => action(event.currentTarget, asy
   message("AI готовит редактируемый черновик...");
   const data = await api("/api/ai/card", "POST", {draft: $("draft").value.trim(), topic: $("topic").value.trim(), answers}, 50000);
   state.card = data.card; state.taskId = null;
+  state.sourceDirty = false;
   resetScore();
   renderEditor(data.card);
   setStage("03 / 03", "Проверить и сохранить");
@@ -204,6 +252,7 @@ $("publish").addEventListener("click", event => action(event.currentTarget, asyn
 
 function renderBusinessTasks() {
   const list = $("business-task-list"); list.replaceChildren();
+  $("saved-count").textContent = state.businessTasks.length ? String(state.businessTasks.length) : "";
   if (!state.businessTasks.length) { list.append(el("p", "Сохранённых задач пока нет.")); return; }
   for (const task of state.businessTasks) {
     const item = el("article", null, "saved-task"), text = el("div"), button = el("button", "Продолжить редактирование", "secondary");
@@ -226,16 +275,17 @@ async function loadBusinessTasks(quiet = false) {
   } catch (error) { message(error.message, true); }
 }
 async function openSavedTask(id) {
-  if (state.dirty && !window.confirm("Есть несохранённые изменения. Переключиться на другую задачу и отбросить их?")) return;
+  if (!canReplaceWork()) return;
   message("Открываем сохранённую задачу...");
   const task = await api(`/api/tasks/${id}`);
+  clearSource(); $("source").hidden = true;
   state.taskId = task.id; state.card = task.card;
   $("topic").value = task.topic;
   renderEditor(task.card, task.confirmed_fields, false);
   showScore(task);
   setStage("03 / 03", task.status === "published" ? "Продолжить публикацию" : "Продолжить черновик");
-  message(`Задача №${task.id} открыта. Следующее сохранение обновит её без создания копии.`);
-  $("editor").scrollIntoView({behavior: "smooth", block: "start"});
+  message(`Задача №${task.id} открыта.`);
+  reveal($("editor-title"));
 }
 $("refresh-business-tasks").addEventListener("click", event => action(event.currentTarget, () => loadBusinessTasks()));
 
@@ -317,7 +367,7 @@ async function openTask(id) {
         duration_days: duration, prototype_url: inputs.prototype_url.value.trim()});
       message("Предложение отправлено. Решение примет бизнес."); form.reset();
     });});
-    detail.append(form); detail.hidden = false; detail.scrollIntoView({behavior: "smooth"});
+    detail.append(form); detail.hidden = false; reveal(detail);
     message("Задача загружена. Заполните все поля отклика.");
   } catch (error) { message(error.message, true); }
 }
@@ -346,14 +396,16 @@ async function loadProposals(successMessage = "") {
     if (!proposals.length) { list.append(el("p", "Пока нет предложений.")); message("Отклики загружены: пока ни одного."); return; }
     for (const p of proposals) {
       const article = el("article"), team = teams.find(t => t.id === p.team_id), actions = el("div", null, "actions");
+      article.classList.toggle("selected", p.status === "selected");
       const profile = el("div", null, "team-profile");
       profile.append(el("span", `Навыки: ${team?.skills?.join(", ") || "не указаны"}`), el("span", `Технологии: ${team?.technologies?.join(", ") || "не указаны"}`));
-      article.append(el("h3", `${team?.name || "Команда"} · ${p.status === "selected" ? "Выбрана" : p.status === "rejected" ? "Отклонена" : "Ожидает решения"}`), profile,
+      article.append(el("h3", team?.name || "Команда"), el("p", `${p.status === "selected" ? "Выбрана" : p.status === "rejected" ? "Отклонена" : "Ожидает решения"}${p.milestone_confirmed ? " · Этап подтверждён · +10 однократно" : ""}`, "proposal-status"), profile,
         el("p", p.idea), el("p", `План: ${p.plan}`), el("p", `Срок: ${p.duration_days} дн. · Баллы команды: ${team?.points ?? 0} · За этот этап: ${p.points}`, "proposal-meta"));
       const link = el("a", "Открыть прототип"); link.href = p.prototype_url; link.target = "_blank"; link.rel = "noopener noreferrer"; article.append(link);
       for (const [status, title] of [["selected","Выбрать"],["rejected","Отклонить"]]) {
         if (p.milestone_confirmed && status === "rejected") continue;
         const button = el("button", title, status === "selected" ? "primary" : "secondary");
+        button.disabled = p.status === status;
         button.addEventListener("click", () => action(button, async () => {
           await api(`/api/proposals/${p.id}`, "PATCH", {status});
           await loadProposals("Решение сохранено вручную. Остальные отклики не изменены.");
@@ -374,4 +426,6 @@ async function loadProposals(successMessage = "") {
 }
 $("business-task").addEventListener("change", () => loadProposals());
 $("topic").addEventListener("input", markDirty);
+$("source").addEventListener("input", () => { state.sourceDirty = true; });
+$("topic").addEventListener("input", () => { if (!state.card) state.sourceDirty = true; });
 view("create");

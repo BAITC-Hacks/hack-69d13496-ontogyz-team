@@ -90,11 +90,17 @@
   byId("business-task-list").querySelector("button").click(); await idle();
   check(byId("field-title").value==="Несохранённая правка" && !byId("unsaved").hidden,"Отмена переключения сохраняет несохранённый текст");
   win.confirm=()=>true;
-  byId("business-task-list").querySelector("button").click(); await idle();
+  byId("business-task-list").querySelector("button").click();
+  check(byId("field-title").disabled && byId("new-task").disabled && byId("save").disabled,"Во время перехода к задаче редактор защищён от параллельных правок");
+  await idle();
   byId("field-title").value="После продолжения";
   byId("field-title").dispatchEvent(new win.Event("input"));
   byId("save").click(); await idle();
   check(byId("task-state").textContent.includes("№91") && requests.at(-1).path==="/api/tasks/91" && requests.at(-1).method==="PUT","Продолжение восстанавливает ID и сохраняет через PUT");
+  check(byId("draft").value==="" && byId("question-list").children.length===0 && byId("source").hidden && byId("editor-kind").textContent==="Сохранённый черновик","Открытие другой задачи очищает описание и вопросы, восстанавливает тип карточки");
+  byId("new-task").click();
+  byId("draft").value="В магазине много списаний. Хотим их сократить.";
+  byId("ask").click(); await idle();
   byId("generate").click(); await idle();
   check(byId("score").textContent==="0" && byId("task-state").textContent==="Не сохранено","Новая AI-карточка сбрасывает старые рейтинг и статус");
   testRace=true;
@@ -105,5 +111,14 @@
   await new Promise(resolve=>setTimeout(resolve,500));
   check(byId("proposal-list").textContent.includes("НОВАЯ ЗАДАЧА") && !byId("proposal-list").textContent.includes("СТАРАЯ ЗАДАЧА") && byId("proposal-list").textContent.includes("Аналитика") && byId("proposal-list").textContent.includes("FastAPI"),"Поздний ответ не смешивает отклики; навыки и технологии видны");
   doc.querySelector('[data-view="create"]').click();
+  await idle();
+  byId("saved-tasks").open=true;
+  for (const width of [390,375]) {
+    frame.style.width=width+"px";
+    await idle();
+    const buttons=[...byId("business-task-list").querySelectorAll("button")];
+    check(doc.documentElement.scrollWidth<=doc.documentElement.clientWidth && buttons.length>0 && buttons.every(button=>button.getBoundingClientRect().right<=doc.documentElement.clientWidth),`Список сохранённых задач и кнопки не выходят за ${width} px`);
+  }
+  frame.style.width="100%";
   output.textContent += "\nЗавершено. Это тестовые ответы, а не реальный AI-прогон.";
 })().catch(error=>{document.getElementById("results").textContent += `\nERROR ${error.message}`;});
