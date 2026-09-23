@@ -2,12 +2,20 @@
 
 import asyncio
 import json
+import os
 import sys
+import tempfile
 import types
 import unittest
-from unittest.mock import AsyncMock, patch
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from fastapi.testclient import TestClient
+from httpx import Request
+from openai import APITimeoutError
 
 from app.ai import service
+from app.main import app
 
 
 VALID_QUESTIONS = {
@@ -91,6 +99,53 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(segments, [{"id": "s1", "text": "Пациенты долго ждут."}])
 
+    async def test_retail_user_is_not_contact_and_result_has_no_addition(self):
+        answers = [
+            {"question_id": "q1", "answer": "Точная величина пока неизвестна."},
+            {"question_id": "q2", "answer": "Целевой процент пока не согласован. Сначала нужен отчёт о причинах списаний."},
+            {"question_id": "q3", "answer": "Есть обезличенный CSV со списаниями за четыре недели: дата, товар, количество и причина."},
+            {"question_id": "q4", "answer": "Не менять кассовую систему. Анализировать только предоставленный CSV."},
+            {"question_id": "q5", "answer": "Управляющий магазином."},
+        ]
+        raw = {"title": "Сокращение списаний", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"users": ["s7"], "contact": ["s7"], "expected_result": ["s3"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(
+                "В магазине много списаний продуктов. Хотим сократить их.", "Ритейл", answers)
+        self.assertEqual(card["users"], "Управляющий магазином.")
+        self.assertEqual(card["contact"], "")
+        self.assertEqual(card["expected_result"], "Сначала нужен отчёт о причинах списаний.")
+        self.assertNotIn("рекомендац", card["expected_result"].casefold())
+
+    async def test_education_unknown_fields_stay_empty(self):
+        answers = [
+            {"question_id": "q1", "answer": "Студенты пишут преподавателям в разных чатах."},
+            {"question_id": "q2", "answer": "Записи сложно собрать в общий список."},
+            {"question_id": "q3", "answer": "Нужна одна форма записи и общий список консультаций."},
+            {"question_id": "q4", "answer": "Студенты и преподаватели."},
+            {"question_id": "q5", "answer": "Ограничения пока не согласованы. Контакт бизнеса, формат взаимодействия, исходные данные и критерии успеха не сообщены."},
+        ]
+        raw = {"title": "Единая запись", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw.update({"users": ["s6"], "expected_result": ["s5"]})
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(
+                "Студенты записываются на консультации в разных чатах. Нужен единый порядок записи.",
+                "Образование", answers)
+        self.assertEqual(card["expected_result"], "Нужна одна форма записи и общий список консультаций.")
+        self.assertEqual(card["contact"], "")
+        self.assertEqual(card["constraints"], "")
+        self.assertEqual(card["data"], "")
+
+    async def test_explicit_contact_is_preserved(self):
+        raw = {"title": "Карточка", **{field: [] for field in service.SOURCE_FIELDS}}
+        raw["contact"] = ["s2"]
+        with patch.object(service, "_model_json", AsyncMock(return_value=raw)):
+            card = await service.build_card(
+                "Нужна карточка задачи.", "Другое",
+                [{"question_id": "q1", "answer": "Контакт бизнеса: Айгуль, email aigul@example.org"}],
+            )
+        self.assertEqual(card["contact"], "Контакт бизнеса: Айгуль, email aigul@example.org")
+
 
 class ClientBoundaryTests(unittest.IsolatedAsyncioTestCase):
     def fake_openai_module(self, create):
@@ -104,6 +159,9 @@ class ClientBoundaryTests(unittest.IsolatedAsyncioTestCase):
             pass
 
         class InternalServerError(APIStatusError):
+            pass
+
+        class APITimeoutError(APIConnectionError):
             pass
 
         class AsyncOpenAI:
@@ -125,6 +183,7 @@ class ClientBoundaryTests(unittest.IsolatedAsyncioTestCase):
             APIStatusError=APIStatusError,
             RateLimitError=RateLimitError,
             InternalServerError=InternalServerError,
+            APITimeoutError=APITimeoutError,
         )
 
     async def test_missing_key_is_safe_and_does_not_import_sdk(self):
@@ -149,6 +208,20 @@ class ClientBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls, 2)
         self.assertEqual(caught.exception.code, "AI_TIMEOUT")
         self.assertNotIn("test-key", str(caught.exception))
+
+    async def test_installed_sdk_timeout_type_returns_timeout_code(self):
+        error = APITimeoutError(request=Request("POST", "https://api.openai.com/v1/chat/completions"))
+        client_mock = MagicMock()
+        client_mock.chat.completions.create = AsyncMock(side_effect=error)
+        context_mock = MagicMock()
+        context_mock.__aenter__ = AsyncMock(return_value=client_mock)
+        context_mock.__aexit__ = AsyncMock(return_value=None)
+        with patch.object(service, "config", side_effect=lambda name: "test-key" if name == "OPENAI_API_KEY" else "test-model"):
+            with patch("openai.AsyncOpenAI", return_value=context_mock):
+                with self.assertRaises(service.AIServiceError) as caught:
+                    await service._model_json("instructions", {}, {}, "schema")
+        self.assertEqual(client_mock.chat.completions.create.await_count, 2)
+        self.assertEqual(caught.exception.code, "AI_TIMEOUT")
 
     async def test_invalid_json_becomes_safe_error(self):
         message = types.SimpleNamespace(refusal=None, content="not json")
@@ -184,6 +257,28 @@ class ClientBoundaryTests(unittest.IsolatedAsyncioTestCase):
         schema = captured["response_format"]["json_schema"]["schema"]
         self.assertEqual(schema["properties"]["questions"]["minItems"], 3)
         self.assertEqual(schema["properties"]["questions"]["maxItems"], 5)
+
+
+class TimeoutRouteTests(unittest.TestCase):
+    def test_installed_sdk_timeout_maps_to_http_504(self):
+        error = APITimeoutError(request=Request("POST", "https://api.openai.com/v1/chat/completions"))
+        client_mock = MagicMock()
+        client_mock.chat.completions.create = AsyncMock(side_effect=error)
+        context_mock = MagicMock()
+        context_mock.__aenter__ = AsyncMock(return_value=client_mock)
+        context_mock.__aexit__ = AsyncMock(return_value=None)
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"DATABASE_PATH": str(Path(directory) / "test.db")}):
+                with patch.object(service, "config", side_effect=lambda name: "test-key" if name == "OPENAI_API_KEY" else "test-model"):
+                    with patch("openai.AsyncOpenAI", return_value=context_mock):
+                        with TestClient(app) as client:
+                            response = client.post(
+                                "/api/ai/questions",
+                                json={"draft": "Хотим сократить списания", "topic": "Ритейл"},
+                            )
+        self.assertEqual(client_mock.chat.completions.create.await_count, 2)
+        self.assertEqual(response.status_code, 504)
+        self.assertEqual(response.json()["error"]["code"], "AI_TIMEOUT")
 
 
 if __name__ == "__main__":
