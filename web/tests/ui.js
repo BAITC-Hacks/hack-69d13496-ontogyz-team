@@ -29,9 +29,11 @@
         saved={...payload,id:91,status:"draft",score:Object.values(breakdown).reduce((a,b)=>a+b,0),level:"draft",score_breakdown:breakdown,missing_fields:Object.keys(breakdown).filter(k=>!breakdown[k])};
         body=saved;
       }
-    } else if (path.endsWith("/proposals")) body={proposals:[{id:1,team_id:1,idea:path.includes('/1/')?'СТАРАЯ ЗАДАЧА':'НОВАЯ ЗАДАЧА',plan:'План проверки',duration_days:14,points:0,status:'pending',prototype_url:'https://example.org/test'}]};
-    else if (path === "/api/tasks") body={tasks:testRace?[{id:1,card,score:30},{id:2,card,score:30}]:[]};
-    else if (path === "/api/teams") body={teams:[]};
+    } else if (path === "/api/business/tasks") body={tasks:saved?[saved]:[]};
+    else if (path === "/api/tasks/91" && method === "GET") body=saved;
+    else if (path.endsWith("/proposals")) body={proposals:[{id:1,team_id:1,idea:path.includes('/1/')?'СТАРАЯ ЗАДАЧА':'НОВАЯ ЗАДАЧА',plan:'План проверки',duration_days:14,points:0,status:'pending',prototype_url:'https://example.org/test'}]};
+    else if (path === "/api/tasks") body={tasks:testRace?[{id:1,card,topic:"Ритейл",score:30,level:"draft"},{id:2,card,topic:"Ритейл",score:30,level:"draft"},{id:3,card,topic:"Экология",score:95,level:"priority"}]:[]};
+    else if (path === "/api/teams") body={teams:[{id:1,name:"Команда 1",points:0,skills:["Аналитика","UX"],technologies:["Python","FastAPI"]}]};
     else throw new Error(`Unexpected test request: ${method} ${path}`);
     return new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json"}});
   };
@@ -48,6 +50,7 @@
   check(byId("answer-q1").value==="Менеджеры магазина" && !byId("generate").disabled && byId("notice").textContent.includes("Тестовая ошибка"),"Ответы сохранены после ошибки; повтор доступен");
   failCard=false;
   byId("generate").click(); await idle();
+  check(byId("stage-number").textContent==="03 / 03" && byId("stage-text").textContent.includes("Проверить"),"Этапы меняются после вопросов и AI-карточки");
   byId("field-title").value="Ручная правка сохранена";
   for(const key of ["context","need","users"]) byId(`confirm-${key}`).checked=true;
   for(const name of ["catalog","business","create"]) {doc.querySelector(`[data-view="${name}"]`).click(); await idle();}
@@ -70,6 +73,8 @@
   const confirmationRemoved=!byId("confirm-context").checked;
   byId("save").click(); await idle();
   const scoreAfterRemoval=byId("score").textContent;
+  [...byId("missing").querySelectorAll("button")].find(button=>button.textContent.includes("Контекст")).click();
+  check(doc.activeElement===byId("field-context"),"Подсказка рейтинга переводит к нужному полю");
   byId("confirm-context").click(); byId("save").click(); await idle();
   check(confirmationRemoved && scoreBeforeSave==="30" && dirtyExplainsScore && scoreAfterRemoval==="20" && byId("score").textContent==="30","Изменение снимает подтверждение: рейтинг 30 → 20 → 30 после повторного подтверждения");
   for(const key of ["context","need","users","data","constraints","expected_result","success_criteria","contact","interaction_format"]) {
@@ -79,13 +84,41 @@
   }
   byId("save").click(); await idle();
   check(byId("score").textContent==="100" && byId("score-note").textContent.includes("не проверка достоверности"),"При 100/100 показано ограничение рейтинга");
+  byId("field-title").value="Несохранённая правка";
+  byId("field-title").dispatchEvent(new win.Event("input"));
+  win.confirm=()=>false;
+  byId("business-task-list").querySelector("button").click(); await idle();
+  check(byId("field-title").value==="Несохранённая правка" && !byId("unsaved").hidden,"Отмена переключения сохраняет несохранённый текст");
+  win.confirm=()=>true;
+  byId("business-task-list").querySelector("button").click();
+  check(byId("field-title").disabled && byId("new-task").disabled && byId("save").disabled,"Во время перехода к задаче редактор защищён от параллельных правок");
+  await idle();
+  byId("field-title").value="После продолжения";
+  byId("field-title").dispatchEvent(new win.Event("input"));
+  byId("save").click(); await idle();
+  check(byId("task-state").textContent.includes("№91") && requests.at(-1).path==="/api/tasks/91" && requests.at(-1).method==="PUT","Продолжение восстанавливает ID и сохраняет через PUT");
+  check(byId("draft").value==="" && byId("question-list").children.length===0 && byId("source").hidden && byId("editor-kind").textContent==="Сохранённый черновик","Открытие другой задачи очищает описание и вопросы, восстанавливает тип карточки");
+  byId("new-task").click();
+  byId("draft").value="В магазине много списаний. Хотим их сократить.";
+  byId("ask").click(); await idle();
+  byId("generate").click(); await idle();
+  check(byId("score").textContent==="0" && byId("task-state").textContent==="Не сохранено","Новая AI-карточка сбрасывает старые рейтинг и статус");
   testRace=true;
   doc.querySelector('[data-view="business"]').click();
   await new Promise(resolve=>setTimeout(resolve,200));
   byId("business-task").value="2";
   byId("business-task").dispatchEvent(new win.Event("change"));
   await new Promise(resolve=>setTimeout(resolve,500));
-  check(byId("proposal-list").textContent.includes("НОВАЯ ЗАДАЧА") && !byId("proposal-list").textContent.includes("СТАРАЯ ЗАДАЧА"),"Поздний ответ предыдущей задачи не смешивает отклики");
+  check(byId("proposal-list").textContent.includes("НОВАЯ ЗАДАЧА") && !byId("proposal-list").textContent.includes("СТАРАЯ ЗАДАЧА") && byId("proposal-list").textContent.includes("Аналитика") && byId("proposal-list").textContent.includes("FastAPI"),"Поздний ответ не смешивает отклики; навыки и технологии видны");
   doc.querySelector('[data-view="create"]').click();
+  await idle();
+  byId("saved-tasks").open=true;
+  for (const width of [390,375]) {
+    frame.style.width=width+"px";
+    await idle();
+    const buttons=[...byId("business-task-list").querySelectorAll("button")];
+    check(doc.documentElement.scrollWidth<=doc.documentElement.clientWidth && buttons.length>0 && buttons.every(button=>button.getBoundingClientRect().right<=doc.documentElement.clientWidth),`Список сохранённых задач и кнопки не выходят за ${width} px`);
+  }
+  frame.style.width="100%";
   output.textContent += "\nЗавершено. Это тестовые ответы, а не реальный AI-прогон.";
 })().catch(error=>{document.getElementById("results").textContent += `\nERROR ${error.message}`;});
