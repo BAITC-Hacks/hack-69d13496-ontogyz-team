@@ -51,7 +51,7 @@
   byId("field-title").value="Ручная правка сохранена";
   for(const key of ["context","need","users"]) byId(`confirm-${key}`).checked=true;
   for(const name of ["catalog","business","create"]) {doc.querySelector(`[data-view="${name}"]`).click(); await idle();}
-  check(byId("field-title").value==="Ручная правка сохранена" && byId("confirm-context").checked && byId("confirm-users").checked,"Правки и подтверждения переживают три переключения ролей");
+  check(byId("field-title").value==="Ручная правка сохранена" && byId("confirm-context").checked && byId("confirm-users").checked && byId("unsaved").textContent.includes("Есть несохранённые изменения"),"Правки и подтверждения переживают три переключения ролей");
   byId("save").click();
   check(byId("publish").disabled,"Публикация заблокирована во время первого сохранения (защита от дубликата)");
   await idle();
@@ -62,6 +62,23 @@
   byId("save").click(); await idle();
   check(byId("field-data").value==="Несохранённые данные" && !byId("save").disabled && !byId("publish").disabled,"Ошибка сохранения сохраняет правки и разблокирует действия");
   check(doc.documentElement.scrollWidth<=doc.documentElement.clientWidth,"Нет горизонтальной прокрутки редактора");
+  failSave=false;
+  byId("field-context").value="Изменённый подтверждённый контекст";
+  byId("field-context").dispatchEvent(new win.Event("input"));
+  const scoreBeforeSave=byId("score").textContent;
+  const dirtyExplainsScore=byId("unsaved").textContent.includes("последней сохранённой версии");
+  const confirmationRemoved=!byId("confirm-context").checked;
+  byId("save").click(); await idle();
+  const scoreAfterRemoval=byId("score").textContent;
+  byId("confirm-context").click(); byId("save").click(); await idle();
+  check(confirmationRemoved && scoreBeforeSave==="30" && dirtyExplainsScore && scoreAfterRemoval==="20" && byId("score").textContent==="30","Изменение снимает подтверждение: рейтинг 30 → 20 → 30 после повторного подтверждения");
+  for(const key of ["context","need","users","data","constraints","expected_result","success_criteria","contact","interaction_format"]) {
+    byId(`field-${key}`).value=`Подтверждённое значение ${key}`;
+    byId(`field-${key}`).dispatchEvent(new win.Event("input"));
+    if(!byId(`confirm-${key}`).checked) byId(`confirm-${key}`).click();
+  }
+  byId("save").click(); await idle();
+  check(byId("score").textContent==="100" && byId("score-note").textContent.includes("не проверка достоверности"),"При 100/100 показано ограничение рейтинга");
   testRace=true;
   doc.querySelector('[data-view="business"]').click();
   await new Promise(resolve=>setTimeout(resolve,200));

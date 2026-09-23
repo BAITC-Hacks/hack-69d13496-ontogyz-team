@@ -41,11 +41,13 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #79b8f8; }
 .meter { background: #e8eef6; height: 10px; border-radius: 20px; overflow: hidden; }
 .meter i { height: 100%; display: block; width: 0; background: linear-gradient(90deg, #2e82ce, #23b991); transition: width .3s; }
 .hint { font-size: 13px; }
+.score-note { background: #edf8f3; border-radius: 8px; color: #176b54 !important; font-size: 13px; padding: 10px 12px; }
 .side ul { padding-left: 19px; color: #55657c; line-height: 1.8; }
 .score-breakdown { list-style: none; padding: 0 !important; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .score-breakdown li { background: #f2f6fb; border-left: 4px solid #a9bad0; border-radius: 6px; padding: 7px 9px; line-height: 1.25; font-size: 12px; }
 .score-breakdown li.earned { border-left-color: #23a77b; color: #176b54; }
 .editor { margin-top: 8px; }
+.unsaved { background: #fff6dd; border: 1px solid #ecd58f; border-radius: 9px; color: #795b08 !important; padding: 11px 13px; }
 .line { display: flex; justify-content: space-between; align-items: start; gap: 15px; }
 .line p { margin-top: -8px; }
 .tag { background: #eaf1fc; color: #2766a7; border-radius: 99px; padding: 8px 13px; font-size: 12px; white-space: nowrap; }
